@@ -18,7 +18,7 @@
   let playerNames = ["Player 1", "Player 2", "Player 3", "Player 4", "Player 5", "Player 6"];
 
   function poolKey(tile) {
-    return `${tile.back}-${tile.id}-${tile.name}`;
+    return `${tile.set}-${tile.back}-${tile.id}`;
   }
 
   const svg = document.getElementById("board-svg");
