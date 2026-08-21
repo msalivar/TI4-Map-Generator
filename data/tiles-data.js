@@ -13,6 +13,12 @@
  * tile and copy its real planets/resources/influence/wormhole/
  * anomaly here. Nothing else in the app needs to change.
  *
+ * The base-game placeholder set described above is NAMED_BLUE_TILES/
+ * WORMHOLE_TILES/RED_TILES. POK_TILES/THUNDERS_EDGE_TILES/
+ * DISCORDANT_STARS_TILES below them are real, wiki-sourced data —
+ * see the comment above each array for its specific sourcing and
+ * exclusions.
+ *
  * Twilight Imperium (Fourth Edition) is a trademark of Fantasy
  * Flight Games / Asmodee. This is an unofficial fan-made tool; no
  * copyrighted artwork or rules text is included, only tile numbers
