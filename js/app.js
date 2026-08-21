@@ -1,0 +1,384 @@
+/**
+ * TI4 Map Generator — app logic
+ */
+(function () {
+  const RINGS = 3; // standard 6-player-sized board (37 hexes)
+  const STORAGE_KEY = "ti4-map-generator-state-v1";
+
+  const cells = generateHexRings(RINGS);
+  const homeKeys = new Set(homeSlotKeys(RINGS));
+
+  /** @type {Map<string, object>} key "q,r" -> placed tile object (or undefined) */
+  let board = new Map();
+  /** pool of tiles not yet placed, keyed by pool-id */
+  let pool = new Map(TILE_POOL.map((t) => [poolKey(t), t]));
+  let selectedPoolKey = null;
+  let playerNames = ["Player 1", "Player 2", "Player 3", "Player 4", "Player 5", "Player 6"];
+
+  function poolKey(tile) {
+    return `${tile.back}-${tile.id}-${tile.name}`;
+  }
+
+  const svg = document.getElementById("board-svg");
+  const paletteBlue = document.getElementById("palette-blue");
+  const paletteRed = document.getElementById("palette-red");
+  const tooltip = document.getElementById("tile-tooltip");
+  const playerLabelsEl = document.getElementById("player-labels");
+
+  function computeViewBox() {
+    const pts = cells.map((c) => axialToPixel(c.q, c.r));
+    const xs = pts.map((p) => p.x);
+    const ys = pts.map((p) => p.y);
+    const pad = HEX_SIZE * 1.3;
+    const minX = Math.min(...xs) - pad;
+    const maxX = Math.max(...xs) + pad;
+    const minY = Math.min(...ys) - pad;
+    const maxY = Math.max(...ys) + pad;
+    return { minX, minY, w: maxX - minX, h: maxY - minY };
+  }
+
+  function svgEl(tag, attrs) {
+    const el = document.createElementNS("http://www.w3.org/2000/svg", tag);
+    Object.entries(attrs || {}).forEach(([k, v]) => el.setAttribute(k, v));
+    return el;
+  }
+
+  function renderBoard() {
+    svg.innerHTML = "";
+    const vb = computeViewBox();
+    svg.setAttribute("viewBox", `${vb.minX} ${vb.minY} ${vb.w} ${vb.h}`);
+    svg.setAttribute("width", Math.min(vb.w, 900));
+    svg.setAttribute("height", (Math.min(vb.w, 900) / vb.w) * vb.h);
+
+    cells.forEach((c) => {
+      const key = keyFor(c.q, c.r);
+      const { x, y } = axialToPixel(c.q, c.r);
+      const g = svgEl("g", { class: "hex-group" });
+
+      if (c.ring === 0) {
+        drawTile(g, x, y, MECATOL_REX, "mecatol", key, false);
+      } else if (homeKeys.has(key)) {
+        drawHomeSlot(g, x, y, key);
+      } else if (board.has(key)) {
+        const tile = board.get(key);
+        drawTile(g, x, y, tile, tile.back, key, true);
+      } else {
+        drawEmpty(g, x, y, key);
+      }
+      svg.appendChild(g);
+    });
+  }
+
+  function drawEmpty(g, x, y, key) {
+    const poly = svgEl("polygon", {
+      points: hexPolygonPoints(x, y),
+      class: "hex empty" + (selectedPoolKey ? " placeable" : ""),
+    });
+    poly.addEventListener("click", () => onEmptyClick(key));
+    g.appendChild(poly);
+  }
+
+  function drawHomeSlot(g, x, y, key) {
+    const idx = [...homeKeys].indexOf(key);
+    const poly = svgEl("polygon", { points: hexPolygonPoints(x, y), class: "hex home" });
+    g.appendChild(poly);
+    const label = svgEl("text", { x, y: y - 4, class: "hex-label" });
+    label.textContent = "HOME";
+    g.appendChild(label);
+    const sub = svgEl("text", { x, y: y + 12, class: "hex-sublabel" });
+    sub.textContent = playerNames[idx] || `Player ${idx + 1}`;
+    g.appendChild(sub);
+  }
+
+  function drawTile(g, x, y, tile, backClass, key, removable) {
+    const poly = svgEl("polygon", { points: hexPolygonPoints(x, y), class: `hex ${backClass}` });
+    if (removable) poly.addEventListener("click", () => onFilledClick(key));
+    poly.addEventListener("mousemove", (e) => showTooltip(e, tile));
+    poly.addEventListener("mouseleave", hideTooltip);
+    g.appendChild(poly);
+
+    const num = svgEl("text", { x, y: y - (tile.planets.length ? 10 : 2), class: "hex-label" });
+    num.textContent = tile.type === "mecatol" ? "Mecatol Rex" : `#${tile.id}`;
+    g.appendChild(num);
+
+    if (tile.planets.length) {
+      const names = tile.planets.map((p) => p.name).join(" / ");
+      const sub = svgEl("text", { x, y: y + 6, class: "hex-sublabel" });
+      sub.textContent = truncate(names, 16);
+      g.appendChild(sub);
+
+      const ri = tile.planets.map((p) => `${p.resources}/${p.influence}`).join("  ");
+      const pip = svgEl("text", { x, y: y + 20, class: "hex-sublabel pip" });
+      pip.textContent = ri;
+      g.appendChild(pip);
+    }
+
+    const tags = [];
+    if (tile.wormhole) tags.push(WORMHOLE_LABELS[tile.wormhole] || tile.wormhole);
+    if (tile.anomaly) tags.push(ANOMALY_LABELS[tile.anomaly] || tile.anomaly);
+    if (tags.length) {
+      const tagEl = svgEl("text", { x, y: y + 34, class: "hex-sublabel" });
+      tagEl.textContent = tags.join(", ");
+      g.appendChild(tagEl);
+    }
+  }
+
+  function truncate(s, n) {
+    return s.length > n ? s.slice(0, n - 1) + "…" : s;
+  }
+
+  function showTooltip(e, tile) {
+    const lines = [tile.type === "mecatol" ? "Mecatol Rex" : `Tile #${tile.id}`];
+    tile.planets.forEach((p) => {
+      lines.push(`${p.name} — ${p.resources}R / ${p.influence}I${p.trait ? " · " + p.trait : ""}${p.tech ? " · " + p.tech + " tech" : ""}`);
+    });
+    if (tile.wormhole) lines.push(WORMHOLE_LABELS[tile.wormhole] || tile.wormhole);
+    if (tile.anomaly) lines.push(ANOMALY_LABELS[tile.anomaly] || tile.anomaly);
+    tooltip.textContent = lines.join("\n");
+    tooltip.style.whiteSpace = "pre-line";
+    tooltip.style.left = e.clientX + 14 + "px";
+    tooltip.style.top = e.clientY + 14 + "px";
+    tooltip.classList.remove("hidden");
+  }
+  function hideTooltip() {
+    tooltip.classList.add("hidden");
+  }
+
+  function onEmptyClick(key) {
+    if (!selectedPoolKey) return;
+    const tile = pool.get(selectedPoolKey);
+    if (!tile) return;
+    pool.delete(selectedPoolKey);
+    board.set(key, tile);
+    selectedPoolKey = null;
+    persist();
+    renderAll();
+  }
+
+  function onFilledClick(key) {
+    const tile = board.get(key);
+    if (!tile) return;
+    board.delete(key);
+    pool.set(poolKey(tile), tile);
+    persist();
+    renderAll();
+  }
+
+  function renderPalette() {
+    paletteBlue.innerHTML = "";
+    paletteRed.innerHTML = "";
+    [...pool.values()]
+      .sort((a, b) => a.id - b.id)
+      .forEach((tile) => {
+        const div = document.createElement("div");
+        div.className = "palette-tile" + (tile.back === "red" ? " red" : "") + (poolKey(tile) === selectedPoolKey ? " selected" : "");
+        div.innerHTML = `<div class="tnum">#${tile.id}</div><div>${tile.planets.length || "—"}</div>`;
+        div.title = tooltipText(tile);
+        div.addEventListener("click", () => {
+          selectedPoolKey = poolKey(tile) === selectedPoolKey ? null : poolKey(tile);
+          renderAll();
+        });
+        (tile.back === "red" ? paletteRed : paletteBlue).appendChild(div);
+      });
+  }
+
+  function tooltipText(tile) {
+    const parts = [`Tile #${tile.id}`];
+    tile.planets.forEach((p) => parts.push(`${p.name} ${p.resources}/${p.influence}`));
+    if (tile.wormhole) parts.push(WORMHOLE_LABELS[tile.wormhole]);
+    if (tile.anomaly) parts.push(ANOMALY_LABELS[tile.anomaly]);
+    return parts.join(" | ");
+  }
+
+  function renderPlayerLabels() {
+    playerLabelsEl.innerHTML = "";
+    playerNames.forEach((name, i) => {
+      const input = document.createElement("input");
+      input.value = name;
+      input.placeholder = `Player ${i + 1}`;
+      input.addEventListener("input", () => {
+        playerNames[i] = input.value;
+        persist();
+        renderBoard();
+      });
+      playerLabelsEl.appendChild(input);
+    });
+  }
+
+  function renderAll() {
+    renderBoard();
+    renderPalette();
+  }
+
+  function randomizeEmpty() {
+    const emptyKeys = cells
+      .filter((c) => c.ring > 0 && !homeKeys.has(keyFor(c.q, c.r)) && !board.has(keyFor(c.q, c.r)))
+      .map((c) => keyFor(c.q, c.r));
+    const available = [...pool.values()];
+    shuffle(available);
+    emptyKeys.forEach((key, i) => {
+      const tile = available[i];
+      if (!tile) return;
+      pool.delete(poolKey(tile));
+      board.set(key, tile);
+    });
+    selectedPoolKey = null;
+    persist();
+    renderAll();
+  }
+
+  function shuffle(arr) {
+    for (let i = arr.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [arr[i], arr[j]] = [arr[j], arr[i]];
+    }
+  }
+
+  function clearBoard() {
+    board.forEach((tile) => pool.set(poolKey(tile), tile));
+    board = new Map();
+    selectedPoolKey = null;
+    persist();
+    renderAll();
+  }
+
+  function serialize() {
+    return {
+      version: 1,
+      rings: RINGS,
+      playerNames,
+      placements: [...board.entries()].map(([key, tile]) => ({ key, tileId: tile.id, back: tile.back, name: tile.name })),
+    };
+  }
+
+  function persist() {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(serialize()));
+    } catch (e) {
+      /* localStorage may be unavailable — ignore */
+    }
+  }
+
+  function loadFromObject(data) {
+    if (!data || !Array.isArray(data.placements)) return;
+    pool = new Map(TILE_POOL.map((t) => [poolKey(t), t]));
+    board = new Map();
+    if (Array.isArray(data.playerNames)) playerNames = data.playerNames;
+    data.placements.forEach((p) => {
+      const match = [...pool.values()].find((t) => t.id === p.tileId && t.back === p.back && t.name === p.name);
+      if (match) {
+        pool.delete(poolKey(match));
+        board.set(p.key, match);
+      }
+    });
+    selectedPoolKey = null;
+    renderPlayerLabels();
+    renderAll();
+  }
+
+  function exportJson() {
+    const blob = new Blob([JSON.stringify(serialize(), null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "ti4-map.json";
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  // The board's colors/fonts come from css/style.css via class names.
+  // A cloned SVG rendered outside the document (as a standalone image)
+  // has no access to that stylesheet, so we inline the relevant rules
+  // directly into the exported SVG.
+  const EXPORT_STYLE = `
+    .hex { stroke-width: 2; }
+    .hex.empty { fill: #171d2c; stroke: #2a3350; }
+    .hex.blue { fill: #24406e; stroke: #4d7bd1; }
+    .hex.red { fill: #5a2733; stroke: #c9576f; }
+    .hex.home { fill: #2e3a2a; stroke: #7fae5a; }
+    .hex.mecatol { fill: #4a3a1a; stroke: #ffb347; }
+    .hex-label { fill: #e8ecf7; font-size: 11px; font-family: "Segoe UI", system-ui, sans-serif; text-anchor: middle; }
+    .hex-sublabel { fill: #9aa4c0; font-size: 9px; font-family: "Segoe UI", system-ui, sans-serif; text-anchor: middle; }
+  `;
+
+  function exportPng() {
+    const serializer = new XMLSerializer();
+    const svgClone = svg.cloneNode(true);
+    svgClone.setAttribute("xmlns", "http://www.w3.org/2000/svg");
+    const styleEl = document.createElementNS("http://www.w3.org/2000/svg", "style");
+    styleEl.textContent = EXPORT_STYLE;
+    svgClone.insertBefore(styleEl, svgClone.firstChild);
+    // Inline a background so the exported PNG isn't transparent.
+    const bg = svgEl("rect", {
+      x: svg.getAttribute("viewBox").split(" ")[0],
+      y: svg.getAttribute("viewBox").split(" ")[1],
+      width: svg.getAttribute("viewBox").split(" ")[2],
+      height: svg.getAttribute("viewBox").split(" ")[3],
+      fill: "#060810",
+    });
+    svgClone.insertBefore(bg, svgClone.firstChild);
+    const svgStr = serializer.serializeToString(svgClone);
+    const svgBlob = new Blob([svgStr], { type: "image/svg+xml;charset=utf-8" });
+    const url = URL.createObjectURL(svgBlob);
+    const img = new Image();
+    img.onload = () => {
+      const scale = 2;
+      const canvas = document.createElement("canvas");
+      canvas.width = img.width * scale;
+      canvas.height = img.height * scale;
+      const ctx = canvas.getContext("2d");
+      ctx.scale(scale, scale);
+      ctx.drawImage(img, 0, 0);
+      URL.revokeObjectURL(url);
+      canvas.toBlob((blob) => {
+        const pngUrl = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = pngUrl;
+        a.download = "ti4-map.png";
+        a.click();
+        URL.revokeObjectURL(pngUrl);
+      });
+    };
+    img.src = url;
+  }
+
+  function importJsonFile(file) {
+    const reader = new FileReader();
+    reader.onload = () => {
+      try {
+        const data = JSON.parse(reader.result);
+        loadFromObject(data);
+        persist();
+      } catch (e) {
+        alert("Could not read that file — is it a valid TI4 Map Generator JSON export?");
+      }
+    };
+    reader.readAsText(file);
+  }
+
+  function init() {
+    document.getElementById("btn-randomize").addEventListener("click", randomizeEmpty);
+    document.getElementById("btn-clear").addEventListener("click", clearBoard);
+    document.getElementById("btn-export-png").addEventListener("click", exportPng);
+    document.getElementById("btn-export-json").addEventListener("click", exportJson);
+    document.getElementById("input-import-json").addEventListener("change", (e) => {
+      if (e.target.files[0]) importJsonFile(e.target.files[0]);
+      e.target.value = "";
+    });
+
+    let saved = null;
+    try {
+      saved = JSON.parse(localStorage.getItem(STORAGE_KEY));
+    } catch (e) {
+      saved = null;
+    }
+    renderPlayerLabels();
+    if (saved) {
+      loadFromObject(saved);
+    } else {
+      renderAll();
+    }
+  }
+
+  document.addEventListener("DOMContentLoaded", init);
+})();

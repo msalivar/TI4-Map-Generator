@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>TI4 Map Generator</title>
+<link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+  <header class="topbar">
+    <h1>TI4 Map Generator</h1>
+    <p class="subtitle">Build a Twilight Imperium 4 galaxy map — unofficial fan tool</p>
+  </header>
+
+  <main class="layout">
+    <section class="board-panel">
+      <div class="toolbar">
+        <button id="btn-randomize">🎲 Randomize empty tiles</button>
+        <button id="btn-clear">🗑️ Clear board</button>
+        <button id="btn-export-png">🖼️ Export PNG</button>
+        <button id="btn-export-json">💾 Export JSON</button>
+        <label class="file-btn">
+          📂 Import JSON
+          <input type="file" id="input-import-json" accept="application/json" hidden />
+        </label>
+      </div>
+      <div class="board-scroll">
+        <svg id="board-svg" xmlns="http://www.w3.org/2000/svg"></svg>
+      </div>
+      <div class="player-labels" id="player-labels"></div>
+    </section>
+
+    <aside class="palette-panel">
+      <h2>System tiles</h2>
+      <p class="hint">Click a tile, then click an empty hex on the board to place it. Click a placed tile to send it back.</p>
+      <div class="palette-group">
+        <h3>Blue systems</h3>
+        <div class="palette-grid" id="palette-blue"></div>
+      </div>
+      <div class="palette-group">
+        <h3>Red systems (anomalies / wormholes)</h3>
+        <div class="palette-grid" id="palette-red"></div>
+      </div>
+    </aside>
+  </main>
+
+  <div id="tile-tooltip" class="tile-tooltip hidden"></div>
+
+  <footer class="footer">
+    <p>Tile data is a best-effort starter set — edit <code>data/tiles-data.js</code> to match your physical tiles for full accuracy. Not affiliated with Fantasy Flight Games / Asmodee.</p>
+  </footer>
+
+  <script src="data/tiles-data.js"></script>
+  <script src="js/hexgrid.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
