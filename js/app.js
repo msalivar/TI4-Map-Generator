@@ -57,6 +57,12 @@
   const tooltip = document.getElementById("tile-tooltip");
   const playerLabelsEl = document.getElementById("player-labels");
   const tileSetsEl = document.getElementById("tile-sets");
+  const randomizeModal = document.getElementById("randomize-modal");
+  const optRatio = document.getElementById("opt-ratio");
+  const ratioLabel = document.getElementById("ratio-label");
+  const optWormholes = document.getElementById("opt-wormholes");
+  const optEntropic = document.getElementById("opt-entropic");
+  const optLegendary = document.getElementById("opt-legendary");
 
   function computeViewBox() {
     const pts = cells.map((c) => axialToPixel(c.q, c.r));
@@ -317,6 +323,19 @@
     renderPalette();
   }
 
+  function updateRatioLabel() {
+    ratioLabel.textContent = `${optRatio.value}% blue / ${100 - optRatio.value}% red`;
+  }
+
+  function openRandomizeModal() {
+    updateRatioLabel();
+    randomizeModal.classList.remove("hidden");
+  }
+
+  function closeRandomizeModal() {
+    randomizeModal.classList.add("hidden");
+  }
+
   function randomizeEmpty() {
     const emptyKeys = cells
       .filter((c) => c.ring > 0 && !homeKeys.has(keyFor(c.q, c.r)) && !board.has(keyFor(c.q, c.r)))
@@ -467,7 +486,12 @@
   }
 
   function init() {
-    document.getElementById("btn-randomize").addEventListener("click", randomizeEmpty);
+    document.getElementById("btn-randomize").addEventListener("click", openRandomizeModal);
+    document.getElementById("btn-randomize-cancel").addEventListener("click", closeRandomizeModal);
+    optRatio.addEventListener("input", () => {
+      optRatio.dataset.touched = "1";
+      updateRatioLabel();
+    });
     document.getElementById("btn-clear").addEventListener("click", clearBoard);
     document.getElementById("btn-export-png").addEventListener("click", exportPng);
     document.getElementById("btn-export-json").addEventListener("click", exportJson);

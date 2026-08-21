@@ -15,7 +15,7 @@
   <main class="layout">
     <section class="board-panel">
       <div class="toolbar">
-        <button id="btn-randomize">🎲 Randomize empty tiles</button>
+        <button id="btn-randomize">🎲 Randomize…</button>
         <button id="btn-clear">🗑️ Clear board</button>
         <button id="btn-export-png">🖼️ Export PNG</button>
         <button id="btn-export-json">💾 Export JSON</button>
@@ -49,6 +49,32 @@
   </main>
 
   <div id="tile-tooltip" class="tile-tooltip hidden"></div>
+
+  <div id="randomize-modal" class="modal-overlay hidden">
+    <div class="modal">
+      <h2>Randomize empty tiles</h2>
+      <label class="modal-field">
+        <span id="ratio-label">50% blue / 50% red</span>
+        <input type="range" id="opt-ratio" min="0" max="100" step="5" value="50" />
+      </label>
+      <label class="modal-field">
+        Wormholes
+        <input type="number" id="opt-wormholes" min="0" step="1" value="0" />
+      </label>
+      <label class="modal-field">
+        Entropic Scars
+        <input type="number" id="opt-entropic" min="0" max="2" step="1" value="0" />
+      </label>
+      <label class="modal-field">
+        Legendary planets (minimum)
+        <input type="number" id="opt-legendary" min="0" step="1" value="0" />
+      </label>
+      <div class="modal-actions">
+        <button id="btn-randomize-cancel">Cancel</button>
+        <button id="btn-randomize-apply">Randomize</button>
+      </div>
+    </div>
+  </div>
 
   <footer class="footer">
     <p>Tile data is a best-effort starter set — edit <code>data/tiles-data.js</code> to match your physical tiles for full accuracy. Not affiliated with Fantasy Flight Games / Asmodee.</p>
