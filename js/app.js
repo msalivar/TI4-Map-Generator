@@ -7,6 +7,8 @@
 
   const cells = generateHexRings(RINGS);
   const homeKeys = new Set(homeSlotKeys(RINGS));
+  const keyToCell = new Map(cells.map((c) => [keyFor(c.q, c.r), c]));
+  const DRAG_THRESHOLD = 6;
 
   /** @type {Map<string, object>} key "q,r" -> placed tile object (or undefined) */
   let board = new Map();
@@ -47,8 +49,6 @@
     svg.innerHTML = "";
     const vb = computeViewBox();
     svg.setAttribute("viewBox", `${vb.minX} ${vb.minY} ${vb.w} ${vb.h}`);
-    svg.setAttribute("width", Math.min(vb.w, 900));
-    svg.setAttribute("height", (Math.min(vb.w, 900) / vb.w) * vb.h);
 
     cells.forEach((c) => {
       const key = keyFor(c.q, c.r);
@@ -73,6 +73,7 @@
     const poly = svgEl("polygon", {
       points: hexPolygonPoints(x, y),
       class: "hex empty" + (selectedPoolKey ? " placeable" : ""),
+      "data-key": key,
     });
     poly.addEventListener("click", () => onEmptyClick(key));
     g.appendChild(poly);
@@ -80,7 +81,7 @@
 
   function drawHomeSlot(g, x, y, key) {
     const idx = [...homeKeys].indexOf(key);
-    const poly = svgEl("polygon", { points: hexPolygonPoints(x, y), class: "hex home" });
+    const poly = svgEl("polygon", { points: hexPolygonPoints(x, y), class: "hex home", "data-key": key });
     g.appendChild(poly);
     const label = svgEl("text", { x, y: y - 4, class: "hex-label" });
     label.textContent = "HOME";
@@ -91,8 +92,11 @@
   }
 
   function drawTile(g, x, y, tile, backClass, key, removable) {
-    const poly = svgEl("polygon", { points: hexPolygonPoints(x, y), class: `hex ${backClass}` });
-    if (removable) poly.addEventListener("click", () => onFilledClick(key));
+    const poly = svgEl("polygon", { points: hexPolygonPoints(x, y), class: `hex ${backClass}`, "data-key": key });
+    if (removable) {
+      poly.addEventListener("click", () => onFilledClick(key));
+      poly.addEventListener("pointerdown", (e) => startTileDrag(e, poly, key));
+    }
     poly.addEventListener("mousemove", (e) => showTooltip(e, tile));
     poly.addEventListener("mouseleave", hideTooltip);
     g.appendChild(poly);
@@ -162,6 +166,78 @@
     pool.set(poolKey(tile), tile);
     persist();
     renderAll();
+  }
+
+  function isValidDropTarget(targetKey, sourceKey) {
+    if (!targetKey || targetKey === sourceKey) return false;
+    if (homeKeys.has(targetKey)) return false;
+    const cell = keyToCell.get(targetKey);
+    if (!cell || cell.ring === 0) return false;
+    return true;
+  }
+
+  function moveOrSwapTile(sourceKey, targetKey) {
+    const sourceTile = board.get(sourceKey);
+    if (!sourceTile) return;
+    const targetTile = board.get(targetKey);
+    board.set(targetKey, sourceTile);
+    if (targetTile) board.set(sourceKey, targetTile);
+    else board.delete(sourceKey);
+    selectedPoolKey = null;
+    persist();
+    renderAll();
+  }
+
+  function startTileDrag(e, poly, key) {
+    if (e.button !== 0) return;
+    const startX = e.clientX;
+    const startY = e.clientY;
+    let dragging = false;
+    let targetPoly = null;
+
+    function clearTargetHighlight() {
+      if (targetPoly) {
+        targetPoly.classList.remove("drop-target", "drop-invalid");
+        targetPoly = null;
+      }
+    }
+
+    function onMove(ev) {
+      if (!dragging) {
+        if (Math.hypot(ev.clientX - startX, ev.clientY - startY) < DRAG_THRESHOLD) return;
+        dragging = true;
+        svg.classList.add("dragging");
+        poly.classList.add("drag-source");
+        hideTooltip();
+      }
+      const el = document.elementFromPoint(ev.clientX, ev.clientY);
+      const hex = el && el.closest(".hex");
+      if (hex !== targetPoly) {
+        clearTargetHighlight();
+        targetPoly = hex || null;
+        if (targetPoly) {
+          const valid = isValidDropTarget(targetPoly.dataset.key, key);
+          targetPoly.classList.add(valid ? "drop-target" : "drop-invalid");
+        }
+      }
+    }
+
+    function onUp(ev) {
+      document.removeEventListener("pointermove", onMove);
+      document.removeEventListener("pointerup", onUp);
+      if (dragging) {
+        svg.classList.remove("dragging");
+        poly.classList.remove("drag-source");
+        const el = document.elementFromPoint(ev.clientX, ev.clientY);
+        const hex = el && el.closest(".hex");
+        clearTargetHighlight();
+        const targetKey = hex && hex.dataset.key;
+        if (isValidDropTarget(targetKey, key)) moveOrSwapTile(key, targetKey);
+      }
+    }
+
+    document.addEventListener("pointermove", onMove);
+    document.addEventListener("pointerup", onUp, { once: true });
   }
 
   function renderPalette() {
