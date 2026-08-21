@@ -118,8 +118,8 @@
     }
 
     const tags = [];
-    if (tile.wormhole) tags.push(WORMHOLE_LABELS[tile.wormhole] || tile.wormhole);
-    if (tile.anomaly) tags.push(ANOMALY_LABELS[tile.anomaly] || tile.anomaly);
+    tile.wormholes.forEach((w) => tags.push(WORMHOLE_LABELS[w] || w));
+    tile.anomalies.forEach((a) => tags.push(ANOMALY_LABELS[a] || a));
     if (tags.length) {
       const tagEl = svgEl("text", { x, y: y + 34, class: "hex-sublabel" });
       tagEl.textContent = tags.join(", ");
@@ -136,8 +136,8 @@
     tile.planets.forEach((p) => {
       lines.push(`${p.name} — ${p.resources}R / ${p.influence}I${p.trait ? " · " + p.trait : ""}${p.tech ? " · " + p.tech + " tech" : ""}`);
     });
-    if (tile.wormhole) lines.push(WORMHOLE_LABELS[tile.wormhole] || tile.wormhole);
-    if (tile.anomaly) lines.push(ANOMALY_LABELS[tile.anomaly] || tile.anomaly);
+    tile.wormholes.forEach((w) => lines.push(WORMHOLE_LABELS[w] || w));
+    tile.anomalies.forEach((a) => lines.push(ANOMALY_LABELS[a] || a));
     tooltip.textContent = lines.join("\n");
     tooltip.style.whiteSpace = "pre-line";
     tooltip.style.left = e.clientX + 14 + "px";
@@ -261,8 +261,8 @@
   function tooltipText(tile) {
     const parts = [`Tile #${tile.id}`];
     tile.planets.forEach((p) => parts.push(`${p.name} ${p.resources}/${p.influence}`));
-    if (tile.wormhole) parts.push(WORMHOLE_LABELS[tile.wormhole]);
-    if (tile.anomaly) parts.push(ANOMALY_LABELS[tile.anomaly]);
+    tile.wormholes.forEach((w) => parts.push(WORMHOLE_LABELS[w]));
+    tile.anomalies.forEach((a) => parts.push(ANOMALY_LABELS[a]));
     return parts.join(" | ");
   }
 
