@@ -231,3 +231,19 @@ button:hover, .file-btn:hover {
   color: var(--text-dim);
   font-size: 0.7rem;
 }
+
+.tile-set-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.tile-set-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+.tile-set-toggle input {
+  width: auto;
+}

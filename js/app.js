@@ -16,9 +16,39 @@
   let pool = new Map(TILE_POOL.map((t) => [poolKey(t), t]));
   let selectedPoolKey = null;
   let playerNames = ["Player 1", "Player 2", "Player 3", "Player 4", "Player 5", "Player 6"];
+  const TILE_SETS = [
+    { key: "pok", label: "Prophecy of Kings" },
+    { key: "thunders-edge", label: "Thunder's Edge" },
+    { key: "discordant-stars", label: "Discordant Stars" },
+  ];
+  let enabledSets = new Set(TILE_SETS.map((s) => s.key));
 
   function poolKey(tile) {
     return `${tile.set}-${tile.back}-${tile.id}`;
+  }
+
+  function visiblePoolTiles() {
+    return [...pool.values()].filter((t) => t.set === "base" || enabledSets.has(t.set));
+  }
+
+  function renderTileSetToggles() {
+    tileSetsEl.innerHTML = "";
+    TILE_SETS.forEach((s) => {
+      const label = document.createElement("label");
+      label.className = "tile-set-toggle";
+      const checkbox = document.createElement("input");
+      checkbox.type = "checkbox";
+      checkbox.checked = enabledSets.has(s.key);
+      checkbox.addEventListener("change", () => {
+        if (checkbox.checked) enabledSets.add(s.key);
+        else enabledSets.delete(s.key);
+        persist();
+        renderAll();
+      });
+      label.appendChild(checkbox);
+      label.appendChild(document.createTextNode(" " + s.label));
+      tileSetsEl.appendChild(label);
+    });
   }
 
   const svg = document.getElementById("board-svg");
@@ -26,6 +56,7 @@
   const paletteRed = document.getElementById("palette-red");
   const tooltip = document.getElementById("tile-tooltip");
   const playerLabelsEl = document.getElementById("player-labels");
+  const tileSetsEl = document.getElementById("tile-sets");
 
   function computeViewBox() {
     const pts = cells.map((c) => axialToPixel(c.q, c.r));
@@ -243,7 +274,7 @@
   function renderPalette() {
     paletteBlue.innerHTML = "";
     paletteRed.innerHTML = "";
-    [...pool.values()]
+    visiblePoolTiles()
       .sort((a, b) => a.id - b.id)
       .forEach((tile) => {
         const div = document.createElement("div");
@@ -323,6 +354,7 @@
       version: 1,
       rings: RINGS,
       playerNames,
+      enabledSets: [...enabledSets],
       placements: [...board.entries()].map(([key, tile]) => ({ key, tileId: tile.id, back: tile.back, name: tile.name })),
     };
   }
@@ -340,6 +372,7 @@
     pool = new Map(TILE_POOL.map((t) => [poolKey(t), t]));
     board = new Map();
     if (Array.isArray(data.playerNames)) playerNames = data.playerNames;
+    if (Array.isArray(data.enabledSets)) enabledSets = new Set(data.enabledSets);
     data.placements.forEach((p) => {
       const match = [...pool.values()].find((t) => t.id === p.tileId && t.back === p.back && t.name === p.name);
       if (match) {
@@ -349,6 +382,7 @@
     });
     selectedPoolKey = null;
     renderPlayerLabels();
+    renderTileSetToggles();
     renderAll();
   }
 
@@ -449,6 +483,7 @@
       saved = null;
     }
     renderPlayerLabels();
+    renderTileSetToggles();
     if (saved) {
       loadFromObject(saved);
     } else {
