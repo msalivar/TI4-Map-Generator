@@ -157,14 +157,18 @@ button:hover, .file-btn:hover {
   pointer-events: none;
   user-select: none;
 }
-.planet-badge-text {
-  fill: #fff;
-  font-size: 7px;
-  font-weight: 700;
+.planet-number {
+  font-weight: 800;
   text-anchor: middle;
   pointer-events: none;
   user-select: none;
+  paint-order: stroke fill;
+  stroke: #0b0e17;
+  stroke-width: 2.5px;
+  stroke-linejoin: round;
 }
+.planet-number-res { fill: #6fdc8c; }
+.planet-number-inf { fill: #7fb3ff; }
 .planet-name {
   fill: var(--text-dim);
   font-size: 6.5px;

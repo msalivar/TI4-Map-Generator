@@ -31,9 +31,9 @@
     { dx: 32, dy: -30 },
     { dx: -32, dy: -30 },
   ];
-  const PIXEL_CELL = 8;
-  const PIXEL_COLS = 17;
-  const PIXEL_ROWS = 15;
+  const PIXEL_CELL = 4;
+  const PIXEL_COLS = 34;
+  const PIXEL_ROWS = 30;
 
   function poolKey(tile) {
     return `${tile.set}-${tile.back}-${tile.id}`;
@@ -224,20 +224,23 @@
       }));
     }
 
-    // Resource/influence badges overlap the lower-inside portion of the
-    // main circle, rather than sitting below it, so the numbers read as
-    // part of the planet rather than a separate caption.
-    const subR = Math.max(6, r * 0.38);
-    const subOffsetX = r * 0.45;
-    const subY = cy + r * 0.32;
+    // Resource (green) and influence (blue) render as large plain numbers
+    // directly on the circle. A dark stroke outline (see .planet-number in
+    // CSS) keeps them legible regardless of the trait color underneath,
+    // instead of relying on a separate badge background.
+    const numFontSize = Math.max(11, r * 0.7);
+    const numOffsetX = r * 0.42;
+    const numY = cy + r * 0.32 + numFontSize * 0.3;
 
-    g.appendChild(svgEl("circle", { cx: cx - subOffsetX, cy: subY, r: subR, fill: "#3fa34d" }));
-    const resText = svgEl("text", { x: cx - subOffsetX, y: subY + subR * 0.35, class: "planet-badge-text" });
+    const resText = svgEl("text", {
+      x: cx - numOffsetX, y: numY, class: "planet-number planet-number-res", "font-size": numFontSize,
+    });
     resText.textContent = planet.resources;
     g.appendChild(resText);
 
-    g.appendChild(svgEl("circle", { cx: cx + subOffsetX, cy: subY, r: subR, fill: "#4d7bd1" }));
-    const infText = svgEl("text", { x: cx + subOffsetX, y: subY + subR * 0.35, class: "planet-badge-text" });
+    const infText = svgEl("text", {
+      x: cx + numOffsetX, y: numY, class: "planet-number planet-number-inf", "font-size": numFontSize,
+    });
     infText.textContent = planet.influence;
     g.appendChild(infText);
 
@@ -288,43 +291,44 @@
     forEachPixelCell((px, py) => {
       const dist = Math.hypot(px, py);
       const angle = Math.atan2(py, px);
-      const rayBoost = Math.pow(Math.abs(Math.cos(angle * 4)), 8) * 26;
-      const edge = 30 + rayBoost;
+      const rayBoost = Math.pow(Math.abs(Math.cos(angle * 4)), 10) * 28;
+      const edge = 28 + rayBoost;
       if (dist > edge) return;
-      const color = dist < 10 ? "#fff2b8" : dist < 22 ? "#ffb347" : "#c0392b";
-      g.appendChild(pixelRect(px, py, color, 0.88));
+      const color = dist < 8 ? "#fffbe0" : dist < 16 ? "#ffe066" : dist < 26 ? "#ff9d2e" : "#d6311f";
+      g.appendChild(pixelRect(px, py, color, 0.97));
     });
   }
 
   function drawAsteroidFieldPixels(g) {
     forEachPixelCell((px, py, col, row) => {
-      const hash = (col * 13 + row * 7 + col * row * 3) % 11;
-      if (hash > 2) return;
-      const shade = hash === 0 ? "#b8bfd4" : hash === 1 ? "#7d8497" : "#565d70";
-      g.appendChild(pixelRect(px, py, shade, 0.8));
+      const hash = (col * 17 + row * 11 + col * row * 5) % 13;
+      if (hash > 4) return;
+      const shade = hash === 0 ? "#e4e8f5" : hash === 1 ? "#aab2c8" : hash === 2 ? "#7d8497" : hash === 3 ? "#565d70" : "#333845";
+      g.appendChild(pixelRect(px, py, shade, 0.93));
     });
   }
 
   function drawNebulaPixels(g) {
     forEachPixelCell((px, py) => {
-      const wave = Math.sin(px * 0.09 + py * 0.05) + Math.cos(py * 0.11 - px * 0.03);
-      if (wave < 0.15) return;
-      const color = wave > 1.1 ? "#f0a6e0" : wave > 0.6 ? "#b06fd6" : "#6a4fb0";
-      g.appendChild(pixelRect(px, py, color, 0.45));
+      const wave = Math.sin(px * 0.1 + py * 0.06) + Math.cos(py * 0.13 - px * 0.04);
+      if (wave < 0.1) return;
+      const color = wave > 1.3 ? "#ffd6f7" : wave > 0.85 ? "#e07dee" : wave > 0.4 ? "#a855e0" : "#6a3fb5";
+      g.appendChild(pixelRect(px, py, color, 0.8));
     });
   }
 
   function drawGravityRiftPixels(g) {
     forEachPixelCell((px, py) => {
       const dist = Math.hypot(px, py);
+      if (dist > 46) return;
       const angle = Math.atan2(py, px);
-      const spiral = ((angle + dist * 0.14) % (Math.PI / 2) + Math.PI / 2) % (Math.PI / 2);
-      if (dist < 10) {
-        g.appendChild(pixelRect(px, py, "#050208", 0.95));
-      } else if (dist < 46 && spiral > 0.9 && spiral < 1.6) {
-        g.appendChild(pixelRect(px, py, "#b98bff", 0.7));
-      } else if (dist < 46) {
-        g.appendChild(pixelRect(px, py, "#0a0a12", 0.5));
+      const spiral = ((angle + dist * 0.16) % (Math.PI / 2) + Math.PI / 2) % (Math.PI / 2);
+      if (dist < 9) {
+        g.appendChild(pixelRect(px, py, "#020103", 1));
+      } else if (spiral > 1.0 && spiral < 1.45) {
+        g.appendChild(pixelRect(px, py, "#d9baff", 0.95));
+      } else {
+        g.appendChild(pixelRect(px, py, "#120a1e", 0.8));
       }
     });
   }
@@ -334,14 +338,14 @@
     forEachPixelCell((px, py) => {
       const dist = Math.hypot(px, py);
       const angle = Math.atan2(py, px) + Math.PI;
-      let radiusHere = 26;
+      let radiusHere = 24;
       for (const s of spikes) {
         const d = Math.abs(((angle - s + Math.PI) % (2 * Math.PI)) - Math.PI);
-        if (d < 0.3) radiusHere = 40;
+        if (d < 0.25) radiusHere = 42;
       }
       if (dist > radiusHere) return;
-      const color = dist > radiusHere - 6 ? "#e04dff" : "#170826";
-      g.appendChild(pixelRect(px, py, color, dist > radiusHere - 6 ? 0.75 : 0.9));
+      const edge = dist > radiusHere - 5;
+      g.appendChild(pixelRect(px, py, edge ? "#ff59ff" : "#1c0a2e", edge ? 0.95 : 0.92));
     });
   }
 
@@ -714,7 +718,9 @@
     .hex-label { fill: #e8ecf7; font-size: 11px; font-family: "Segoe UI", system-ui, sans-serif; text-anchor: middle; }
     .hex-id-label { font-size: 8px; opacity: 0.7; }
     .hex-sublabel { fill: #9aa4c0; font-size: 9px; font-family: "Segoe UI", system-ui, sans-serif; text-anchor: middle; }
-    .planet-badge-text { fill: #fff; font-size: 7px; font-weight: 700; font-family: "Segoe UI", system-ui, sans-serif; text-anchor: middle; }
+    .planet-number { font-weight: 800; font-family: "Segoe UI", system-ui, sans-serif; text-anchor: middle; paint-order: stroke fill; stroke: #0b0e17; stroke-width: 2.5px; stroke-linejoin: round; }
+    .planet-number-res { fill: #6fdc8c; }
+    .planet-number-inf { fill: #7fb3ff; }
     .planet-name { fill: #9aa4c0; font-size: 6.5px; font-family: "Segoe UI", system-ui, sans-serif; text-anchor: middle; }
     .wormhole-icon-label { font-size: 8px; font-weight: 700; font-family: "Segoe UI", system-ui, sans-serif; text-anchor: middle; }
   `;
