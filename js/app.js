@@ -243,8 +243,8 @@
   const TRIANGLE_RADIUS = 17;
   const TRIANGLE_SLOTS = [
     { dx: 0, dy: -16 },
-    { dx: -34, dy: 8 },
-    { dx: 34, dy: 8 },
+    { dx: -36, dy: 8 },
+    { dx: 36, dy: 8 },
   ];
 
   function drawPlanetCluster(g, cx, cy, planets) {
@@ -362,7 +362,9 @@
     const nameLines = wrapPlanetName(planet.name, maxChars);
     const lineHeight = 8;
     const boxHeight = nameLines.length * lineHeight + 3;
-    const nameTop = cy + r + 6;
+    // Overlaps the lower part of the circle instead of sitting below it,
+    // so the whole planet takes noticeably less vertical room.
+    const nameTop = cy + r * 0.58;
     planetGroup.appendChild(svgEl("rect", {
       x: cx - boxWidth / 2, y: nameTop, width: boxWidth, height: boxHeight, rx: 2,
       fill: "#0b0e17", opacity: 0.82,
