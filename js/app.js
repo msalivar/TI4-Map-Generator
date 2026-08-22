@@ -27,12 +27,12 @@
   const WORMHOLE_COLORS = { alpha: "#e0902f", beta: "#3fa34d", gamma: "#c9576f", delta: "#7a6fd0", epsilon: "#4d7bd1" };
   const WORMHOLE_SYMBOLS = { alpha: "α", beta: "β", gamma: "γ", delta: "δ", epsilon: "ε" };
   const WORMHOLE_ICON_SLOTS = [
-    { dx: 32, dy: -30 },
-    { dx: -32, dy: -30 },
+    { dx: 50, dy: 0 },
+    { dx: -50, dy: 0 },
   ];
-  const PIXEL_CELL = 4;
-  const PIXEL_COLS = 34;
-  const PIXEL_ROWS = 30;
+  const PIXEL_CELL = 2;
+  const PIXEL_COLS = 68;
+  const PIXEL_ROWS = 60;
 
   function poolKey(tile) {
     return `${tile.set}-${tile.back}-${tile.id}`;
@@ -229,7 +229,7 @@
     // instead of relying on a separate badge background.
     const numFontSize = Math.max(11, r * 0.7);
     const numOffsetX = r * 0.42;
-    const numY = cy + r * 0.32 + numFontSize * 0.3;
+    const numY = cy + numFontSize * 0.32;
 
     const resText = svgEl("text", {
       x: cx - numOffsetX, y: numY, class: "planet-number planet-number-res", "font-size": numFontSize,
@@ -257,9 +257,7 @@
 
   function drawWormholeIcon(g, x, y, type) {
     const color = WORMHOLE_COLORS[type] || "#9aa4c0";
-    const circle = svgEl("circle", { cx: x, cy: y, r: 9, fill: "#0b0e17", stroke: color, "stroke-width": 2 });
-    g.appendChild(circle);
-    const label = svgEl("text", { x, y: y + 3, class: "wormhole-icon-label", fill: color });
+    const label = svgEl("text", { x, y: y + 4, class: "wormhole-icon-label", fill: color });
     label.textContent = WORMHOLE_SYMBOLS[type] || "?";
     g.appendChild(label);
   }
@@ -721,7 +719,7 @@
     .planet-number-res { fill: #6fdc8c; }
     .planet-number-inf { fill: #7fb3ff; }
     .planet-name { fill: #9aa4c0; font-size: 6.5px; font-family: "Segoe UI", system-ui, sans-serif; text-anchor: middle; }
-    .wormhole-icon-label { font-size: 8px; font-weight: 700; font-family: "Segoe UI", system-ui, sans-serif; text-anchor: middle; }
+    .wormhole-icon-label { font-size: 15px; font-weight: 800; font-family: "Segoe UI", system-ui, sans-serif; text-anchor: middle; paint-order: stroke fill; stroke: #0b0e17; stroke-width: 2.5px; stroke-linejoin: round; }
   `;
 
   function exportPng() {
