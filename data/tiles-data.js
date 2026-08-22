@@ -33,7 +33,7 @@ const MECATOL_REX = {
   back: "none",
   set: "base",
   name: "Mecatol Rex",
-  planets: [{ name: "Mecatol Rex", resources: 1, influence: 6, trait: null, tech: null, legendary: false }],
+  planets: [{ name: "Mecatol Rex", resources: 1, influence: 6, trait: null, tech: null, legendary: false, station: false }],
   wormholes: [],
   anomalies: [],
 };
@@ -41,8 +41,8 @@ const MECATOL_REX = {
 const TRAITS = ["cultural", "industrial", "hazardous"];
 const TECHS = ["propulsion", "cybernetic", "biotic", "warfare"];
 
-function makePlanet(name, resources, influence, trait, tech, legendary) {
-  return { name, resources, influence, trait: trait || null, tech: tech || null, legendary: !!legendary };
+function makePlanet(name, resources, influence, trait, tech, legendary, station) {
+  return { name, resources, influence, trait: trait || null, tech: tech || null, legendary: !!legendary, station: !!station };
 }
 
 // A handful of real, well-known named systems (values are close to
@@ -158,14 +158,14 @@ const THUNDERS_EDGE_TILES = [
   { id: 106, back: "blue", planets: [makePlanet("Cresius", 0, 1), makePlanet("Lazul Rex", 2, 2)] },
   { id: 107, back: "blue", planets: [makePlanet("Tiamat", 2, 1), makePlanet("Hercalor", 1, 0)] },
   { id: 108, back: "blue", planets: [makePlanet("Kostboth", 0, 1), makePlanet("Capha", 3, 0)] },
-  { id: 109, back: "blue", planets: [makePlanet("Bellatrix", 1, 2), makePlanet("Tsion Station", 1, 1)] },
+  { id: 109, back: "blue", planets: [makePlanet("Bellatrix", 1, 2), makePlanet("Tsion Station", 1, 1, null, null, false, true)] },
   { id: 110, back: "blue", planets: [makePlanet("Horizon", 1, 2), makePlanet("Elnath", 2, 0), makePlanet("Luthien VI", 3, 1)] },
-  { id: 111, back: "blue", planets: [makePlanet("Tarana", 1, 2), makePlanet("Oluz Station", 1, 1)] },
+  { id: 111, back: "blue", planets: [makePlanet("Tarana", 1, 2), makePlanet("Oluz Station", 1, 1, null, null, false, true)] },
   { id: 113, back: "red", planets: [], anomalies: ["rift"], wormholes: ["beta"] },
   { id: 114, back: "red", planets: [], anomalies: ["entropicScar"] },
   { id: 115, back: "red", planets: [makePlanet("Industrex", 2, 0)], anomalies: ["asteroid"] },
   { id: 116, back: "red", planets: [makePlanet("Lemox", 0, 3)], anomalies: ["entropicScar"] },
-  { id: 117, back: "red", planets: [makePlanet("The Watchtower", 1, 1)], anomalies: ["rift", "asteroid"] },
+  { id: 117, back: "red", planets: [makePlanet("The Watchtower", 1, 1, null, null, false, true)], anomalies: ["rift", "asteroid"] },
 ];
 
 // Discordant Stars (fan expansion) — its "Uncharted Space" tile set: 5

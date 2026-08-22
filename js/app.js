@@ -202,18 +202,18 @@
     }));
 
     if (planet.legendary) {
-      const badgeSize = r * 1.1;
+      const badgeSize = r * 0.8;
       g.appendChild(svgEl("image", {
         href: LEGENDARY_BADGE_DATA_URI,
         x: cx - badgeSize / 2,
-        y: cy - r - badgeSize + 4,
+        y: cy - r - badgeSize / 2,
         width: badgeSize,
         height: badgeSize,
       }));
     } else if (planet.tech && TECH_ICON_DATA_URIS[planet.tech]) {
       // Centered on the circle's top edge, straddling the boundary, rather
       // than floating above it.
-      const iconSize = r * 0.62;
+      const iconSize = r * 0.78;
       g.appendChild(svgEl("image", {
         href: TECH_ICON_DATA_URIS[planet.tech],
         x: cx - iconSize / 2,
@@ -221,6 +221,19 @@
         width: iconSize,
         height: iconSize,
       }));
+    }
+
+    if (planet.station) {
+      // A small ringed-station glyph on the lower-right edge of the circle
+      // -- no real icon asset for this, so it's an abstract "orbital ring"
+      // symbol rather than official artwork.
+      const sx = cx + r * 0.72;
+      const sy = cy + r * 0.52;
+      const ringR = r * 0.24;
+      g.appendChild(svgEl("line", {
+        x1: sx - ringR - 3, y1: sy, x2: sx + ringR + 3, y2: sy, stroke: "#d7deee", "stroke-width": 1.4,
+      }));
+      g.appendChild(svgEl("circle", { cx: sx, cy: sy, r: ringR, fill: "#232a3d", stroke: "#d7deee", "stroke-width": 1.6 }));
     }
 
     // Resource (green) and influence (blue) render as large plain numbers
@@ -243,16 +256,21 @@
     infText.textContent = planet.influence;
     g.appendChild(infText);
 
-    const nameStr = truncate(planet.name, 10);
-    const nameY = cy + r + 11;
-    const boxWidth = Math.min(Math.max(24, nameStr.length * 4.3 + 6), r * 3.4);
+    const boxWidth = Math.max(30, Math.min(r * 3.4, 70));
+    const maxChars = Math.max(4, Math.floor((boxWidth - 6) / 3.9));
+    const nameLines = wrapPlanetName(planet.name, maxChars);
+    const lineHeight = 8;
+    const boxHeight = nameLines.length * lineHeight + 3;
+    const nameTop = cy + r + 6;
     g.appendChild(svgEl("rect", {
-      x: cx - boxWidth / 2, y: nameY - 6.5, width: boxWidth, height: 9, rx: 2,
+      x: cx - boxWidth / 2, y: nameTop, width: boxWidth, height: boxHeight, rx: 2,
       fill: "#0b0e17", opacity: 0.82,
     }));
-    const nameText = svgEl("text", { x: cx, y: nameY, class: "planet-name" });
-    nameText.textContent = nameStr;
-    g.appendChild(nameText);
+    nameLines.forEach((line, i) => {
+      const nameText = svgEl("text", { x: cx, y: nameTop + lineHeight * i + 7, class: "planet-name" });
+      nameText.textContent = line;
+      g.appendChild(nameText);
+    });
   }
 
   function drawWormholeIcon(g, x, y, type) {
@@ -296,21 +314,44 @@
     });
   }
 
+  const ASTEROID_ROCKS = [
+    { x: -42, y: -30, r: 14 }, { x: 10, y: -40, r: 16 }, { x: 40, y: -16, r: 12 },
+    { x: -18, y: 2, r: 17 }, { x: 24, y: 16, r: 13 }, { x: -46, y: 20, r: 11 },
+    { x: 0, y: 38, r: 14 }, { x: 42, y: 34, r: 10 }, { x: -8, y: -10, r: 9 },
+  ];
+
   function drawAsteroidFieldPixels(g) {
-    forEachPixelCell((px, py, col, row) => {
-      const hash = (col * 17 + row * 11 + col * row * 5) % 13;
-      if (hash > 4) return;
-      const shade = hash === 0 ? "#e4e8f5" : hash === 1 ? "#aab2c8" : hash === 2 ? "#7d8497" : hash === 3 ? "#565d70" : "#333845";
-      g.appendChild(pixelRect(px, py, shade, 0.93));
+    forEachPixelCell((px, py) => {
+      for (const rock of ASTEROID_ROCKS) {
+        const dx = px - rock.x;
+        const dy = py - rock.y;
+        const angle = Math.atan2(dy, dx);
+        const wobble = Math.sin(angle * 5 + rock.x * 0.3) * 1.6;
+        const dist = Math.hypot(dx, dy);
+        const edge = rock.r + wobble;
+        if (dist > edge) continue;
+        const edgeFrac = dist / edge;
+        const lit = Math.cos(angle - 0.8) > 0.2;
+        const color = edgeFrac > 0.82 ? "#242833" : lit ? "#aeb6c9" : "#5c6577";
+        g.appendChild(pixelRect(px, py, color, 0.95));
+        return;
+      }
     });
   }
 
   function drawNebulaPixels(g) {
     forEachPixelCell((px, py) => {
-      const wave = Math.sin(px * 0.1 + py * 0.06) + Math.cos(py * 0.13 - px * 0.04);
-      if (wave < 0.1) return;
-      const color = wave > 1.3 ? "#ffd6f7" : wave > 0.85 ? "#e07dee" : wave > 0.4 ? "#a855e0" : "#6a3fb5";
-      g.appendChild(pixelRect(px, py, color, 0.8));
+      const dist = Math.hypot(px, py);
+      if (dist > 66) return;
+      const angle = Math.atan2(py, px);
+      const swirl1 = Math.sin(angle * 3 + dist * 0.09);
+      const swirl2 = Math.sin(angle * 5 - dist * 0.05 + 1.5);
+      const turbulence = swirl1 * 0.6 + swirl2 * 0.4;
+      const fade = 1 - dist / 66;
+      const intensity = turbulence * 0.5 + 0.5;
+      if (intensity * fade < 0.18) return;
+      const color = intensity > 0.78 ? "#ffe3fb" : intensity > 0.55 ? "#f0a6f0" : intensity > 0.35 ? "#b95fd9" : "#5a3494";
+      g.appendChild(pixelRect(px, py, color, Math.min(0.9, 0.35 + fade * 0.5)));
     });
   }
 
@@ -330,19 +371,49 @@
     });
   }
 
+  // A jagged bolt of "chaotic energy" crossing the tile, plus scattered
+  // sparkles, over a dark black/purple base.
+  const ENTROPIC_LINE = [
+    { x: -62, y: -30 }, { x: -34, y: -8 }, { x: -44, y: 6 }, { x: -10, y: 2 },
+    { x: -18, y: 24 }, { x: 20, y: 14 }, { x: 10, y: 38 }, { x: 62, y: 20 },
+  ];
+  const ENTROPIC_SPARKLES = [
+    { x: -30, y: -20 }, { x: 15, y: -35 }, { x: 38, y: -8 }, { x: -45, y: 10 },
+    { x: 5, y: 30 }, { x: -12, y: -6 }, { x: 30, y: 22 }, { x: -20, y: 35 },
+    { x: 45, y: -25 }, { x: -40, y: -35 }, { x: 0, y: -2 }, { x: 50, y: 4 },
+  ];
+
+  function distToSegment(px, py, ax, ay, bx, by) {
+    const dx = bx - ax;
+    const dy = by - ay;
+    const lenSq = dx * dx + dy * dy;
+    let t = lenSq > 0 ? ((px - ax) * dx + (py - ay) * dy) / lenSq : 0;
+    t = Math.max(0, Math.min(1, t));
+    return Math.hypot(px - (ax + t * dx), py - (ay + t * dy));
+  }
+
   function drawEntropicScarPixels(g) {
-    const spikes = [0, 0.7, 1.4, 2.1, 2.8, 3.5, 4.2, 4.9, 5.6];
     forEachPixelCell((px, py) => {
-      const dist = Math.hypot(px, py);
-      const angle = Math.atan2(py, px) + Math.PI;
-      let radiusHere = 24;
-      for (const s of spikes) {
-        const d = Math.abs(((angle - s + Math.PI) % (2 * Math.PI)) - Math.PI);
-        if (d < 0.25) radiusHere = 42;
+      let lineDist = Infinity;
+      for (let i = 0; i < ENTROPIC_LINE.length - 1; i++) {
+        const a = ENTROPIC_LINE[i];
+        const b = ENTROPIC_LINE[i + 1];
+        lineDist = Math.min(lineDist, distToSegment(px, py, a.x, a.y, b.x, b.y));
       }
-      if (dist > radiusHere) return;
-      const edge = dist > radiusHere - 5;
-      g.appendChild(pixelRect(px, py, edge ? "#ff59ff" : "#1c0a2e", edge ? 0.95 : 0.92));
+      if (lineDist < 3) {
+        g.appendChild(pixelRect(px, py, "#ffe0ff", 0.98));
+        return;
+      }
+      if (lineDist < 7) {
+        g.appendChild(pixelRect(px, py, "#e04dff", 0.85));
+        return;
+      }
+      if (ENTROPIC_SPARKLES.some((s) => Math.hypot(px - s.x, py - s.y) < 2.4)) {
+        g.appendChild(pixelRect(px, py, "#f6d9ff", 0.95));
+        return;
+      }
+      const mottle = Math.sin(px * 0.15 + py * 0.11) + Math.cos(px * 0.09 - py * 0.13);
+      g.appendChild(pixelRect(px, py, mottle > 0.6 ? "#241333" : "#120819", 0.92));
     });
   }
 
@@ -363,14 +434,27 @@
     g.appendChild(wrapper);
   }
 
-  function truncate(s, n) {
-    return s.length > n ? s.slice(0, n - 1) + "…" : s;
+  function wrapPlanetName(name, maxChars) {
+    const words = name.split(" ");
+    const lines = [];
+    let current = "";
+    words.forEach((word) => {
+      const candidate = current ? `${current} ${word}` : word;
+      if (candidate.length > maxChars && current) {
+        lines.push(current);
+        current = word;
+      } else {
+        current = candidate;
+      }
+    });
+    if (current) lines.push(current);
+    return lines;
   }
 
   function showTooltip(e, tile) {
     const lines = [tile.type === "mecatol" ? "Mecatol Rex" : `Tile #${tile.id}`];
     tile.planets.forEach((p) => {
-      lines.push(`${p.name} — ${p.resources}R / ${p.influence}I${p.trait ? " · " + p.trait : ""}${p.tech ? " · " + p.tech + " tech" : ""}`);
+      lines.push(`${p.name} — ${p.resources}R / ${p.influence}I${p.trait ? " · " + p.trait : ""}${p.tech ? " · " + p.tech + " tech" : ""}${p.station ? " · space station" : ""}`);
     });
     tile.wormholes.forEach((w) => lines.push(WORMHOLE_LABELS[w] || w));
     tile.anomalies.forEach((a) => lines.push(ANOMALY_LABELS[a] || a));
@@ -496,7 +580,7 @@
 
   function tooltipText(tile) {
     const parts = [`Tile #${tile.id}`];
-    tile.planets.forEach((p) => parts.push(`${p.name} ${p.resources}/${p.influence}`));
+    tile.planets.forEach((p) => parts.push(`${p.name} ${p.resources}/${p.influence}${p.station ? " (Station)" : ""}`));
     tile.wormholes.forEach((w) => parts.push(WORMHOLE_LABELS[w]));
     tile.anomalies.forEach((a) => parts.push(ANOMALY_LABELS[a]));
     return parts.join(" | ");
