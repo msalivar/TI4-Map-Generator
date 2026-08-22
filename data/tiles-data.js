@@ -142,29 +142,30 @@ const POK_TILES = [
 // Thunder's Edge — generic system tiles only. Faction/gate home systems
 // (92-96, 118), the alternate Mecatol Rex (112), and hyperlane/fracture
 // tiles (119-128) are excluded for the same reason as PoK's exclusions
-// above. The wiki's tile list doesn't record planet trait/tech for this
-// expansion, so those are left null — edit this file to fill them in
-// from your physical set if you want that detail.
+// above. Trait/tech below is sourced from the wiki's Thunder's Edge page
+// (which has a fuller "New Planet Systems" table than the general Tiles
+// List); that table doesn't cover tile 110's three planets, so those are
+// still left null — edit this file to fill them in from your physical set.
 const THUNDERS_EDGE_TILES = [
-  { id: 97, back: "blue", planets: [makePlanet("Faunus", 1, 3, null, null, true)] },
-  { id: 98, back: "blue", planets: [makePlanet("Garbozia", 2, 1, null, null, true)] },
-  { id: 99, back: "blue", planets: [makePlanet("Emelpar", 0, 2, null, null, true)] },
-  { id: 100, back: "blue", planets: [makePlanet("Tempesta", 1, 1, null, null, true)] },
-  { id: 101, back: "blue", planets: [makePlanet("Olergodt", 2, 1)] },
-  { id: 102, back: "blue", planets: [makePlanet("Andeara", 1, 1)], wormholes: ["alpha"] },
-  { id: 103, back: "blue", planets: [makePlanet("Vira-Pics III", 2, 3)] },
-  { id: 104, back: "blue", planets: [makePlanet("Lesab", 2, 1)] },
-  { id: 105, back: "blue", planets: [makePlanet("New Terra", 1, 1), makePlanet("Tinnes", 2, 1)] },
-  { id: 106, back: "blue", planets: [makePlanet("Cresius", 0, 1), makePlanet("Lazul Rex", 2, 2)] },
-  { id: 107, back: "blue", planets: [makePlanet("Tiamat", 2, 1), makePlanet("Hercalor", 1, 0)] },
-  { id: 108, back: "blue", planets: [makePlanet("Kostboth", 0, 1), makePlanet("Capha", 3, 0)] },
-  { id: 109, back: "blue", planets: [makePlanet("Bellatrix", 1, 2), makePlanet("Tsion Station", 1, 1, null, null, false, true)] },
+  { id: 97, back: "blue", planets: [makePlanet("Faunus", 1, 3, "industrial", "biotic", true)] },
+  { id: 98, back: "blue", planets: [makePlanet("Garbozia", 2, 1, "hazardous", null, true)] },
+  { id: 99, back: "blue", planets: [makePlanet("Emelpar", 0, 2, "cultural", null, true)] },
+  { id: 100, back: "blue", planets: [makePlanet("Tempesta", 1, 1, "hazardous", "propulsion", true)] },
+  { id: 101, back: "blue", planets: [makePlanet("Olergodt", 2, 1, "cultural", "cybernetic")] },
+  { id: 102, back: "blue", planets: [makePlanet("Andeara", 1, 1, "industrial", "propulsion")], wormholes: ["alpha"] },
+  { id: 103, back: "blue", planets: [makePlanet("Vira-Pics III", 2, 3, "cultural")] },
+  { id: 104, back: "blue", planets: [makePlanet("Lesab", 2, 1, "industrial")] },
+  { id: 105, back: "blue", planets: [makePlanet("New Terra", 1, 1, "industrial", "biotic"), makePlanet("Tinnes", 2, 1, "industrial", "biotic")] },
+  { id: 106, back: "blue", planets: [makePlanet("Cresius", 0, 1, "hazardous"), makePlanet("Lazul Rex", 2, 2, "cultural")] },
+  { id: 107, back: "blue", planets: [makePlanet("Tiamat", 2, 1, "cultural", "cybernetic"), makePlanet("Hercalor", 1, 0, "industrial")] },
+  { id: 108, back: "blue", planets: [makePlanet("Kostboth", 0, 1, "cultural"), makePlanet("Capha", 3, 0, "hazardous")] },
+  { id: 109, back: "blue", planets: [makePlanet("Bellatrix", 1, 2, "cultural"), makePlanet("Tsion Station", 1, 1, null, null, false, true)] },
   { id: 110, back: "blue", planets: [makePlanet("Horizon", 1, 2), makePlanet("Elnath", 2, 0), makePlanet("Luthien VI", 3, 1)] },
-  { id: 111, back: "blue", planets: [makePlanet("Tarana", 1, 2), makePlanet("Oluz Station", 1, 1, null, null, false, true)] },
+  { id: 111, back: "blue", planets: [makePlanet("Tarana", 1, 2, "cultural"), makePlanet("Oluz Station", 1, 1, null, null, false, true)] },
   { id: 113, back: "red", planets: [], anomalies: ["rift"], wormholes: ["beta"] },
   { id: 114, back: "red", planets: [], anomalies: ["entropicScar"] },
-  { id: 115, back: "red", planets: [makePlanet("Industrex", 2, 0)], anomalies: ["asteroid"] },
-  { id: 116, back: "red", planets: [makePlanet("Lemox", 0, 3)], anomalies: ["entropicScar"] },
+  { id: 115, back: "red", planets: [makePlanet("Industrex", 2, 0, "industrial", "warfare")], anomalies: ["asteroid"] },
+  { id: 116, back: "red", planets: [makePlanet("Lemox", 0, 3, "industrial")], anomalies: ["entropicScar"] },
   { id: 117, back: "red", planets: [makePlanet("The Watchtower", 1, 1, null, null, false, true)], anomalies: ["rift", "asteroid"] },
 ];
 
