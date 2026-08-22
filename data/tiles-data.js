@@ -144,8 +144,9 @@ const POK_TILES = [
 // tiles (119-128) are excluded for the same reason as PoK's exclusions
 // above. Trait/tech below is sourced from the wiki's Thunder's Edge page
 // (which has a fuller "New Planet Systems" table than the general Tiles
-// List); that table doesn't cover tile 110's three planets, so those are
-// still left null — edit this file to fill them in from your physical set.
+// List); that table doesn't cover tile 110's three planets, so those
+// traits came from a physical-tile check instead (tech is still unknown
+// for them — edit this file to fill it in from your physical set).
 const THUNDERS_EDGE_TILES = [
   { id: 97, back: "blue", planets: [makePlanet("Faunus", 1, 3, "industrial", "biotic", true)] },
   { id: 98, back: "blue", planets: [makePlanet("Garbozia", 2, 1, "hazardous", null, true)] },
@@ -160,7 +161,7 @@ const THUNDERS_EDGE_TILES = [
   { id: 107, back: "blue", planets: [makePlanet("Tiamat", 2, 1, "cultural", "cybernetic"), makePlanet("Hercalor", 1, 0, "industrial")] },
   { id: 108, back: "blue", planets: [makePlanet("Kostboth", 0, 1, "cultural"), makePlanet("Capha", 3, 0, "hazardous")] },
   { id: 109, back: "blue", planets: [makePlanet("Bellatrix", 1, 2, "cultural"), makePlanet("Tsion Station", 1, 1, null, null, false, true)] },
-  { id: 110, back: "blue", planets: [makePlanet("Horizon", 1, 2), makePlanet("Elnath", 2, 0), makePlanet("Luthien VI", 3, 1)] },
+  { id: 110, back: "blue", planets: [makePlanet("Horizon", 1, 2, "industrial"), makePlanet("Elnath", 2, 0, "hazardous"), makePlanet("Luthien VI", 3, 1, "hazardous")] },
   { id: 111, back: "blue", planets: [makePlanet("Tarana", 1, 2, "cultural"), makePlanet("Oluz Station", 1, 1, null, null, false, true)] },
   { id: 113, back: "red", planets: [], anomalies: ["rift"], wormholes: ["beta"] },
   { id: 114, back: "red", planets: [], anomalies: ["entropicScar"] },
