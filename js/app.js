@@ -328,7 +328,7 @@
   }
 
   function openRandomizeModal() {
-    updateRatioLabel();
+    updateRandomizeBounds();
     randomizeModal.classList.remove("hidden");
   }
 
@@ -336,18 +336,83 @@
     randomizeModal.classList.add("hidden");
   }
 
-  function randomizeEmpty() {
-    const emptyKeys = cells
+  function emptySlotKeys() {
+    return cells
       .filter((c) => c.ring > 0 && !homeKeys.has(keyFor(c.q, c.r)) && !board.has(keyFor(c.q, c.r)))
       .map((c) => keyFor(c.q, c.r));
-    const available = [...pool.values()];
-    shuffle(available);
+  }
+
+  function updateRandomizeBounds() {
+    const available = visiblePoolTiles();
+    const n = emptySlotKeys().length;
+
+    const wormholeAvail = available.filter((t) => t.wormholes.length > 0).length;
+    const entropicAvail = available.filter((t) => t.anomalies.includes("entropicScar")).length;
+    const legendaryAvail = available.filter((t) => t.planets.some((p) => p.legendary)).length;
+    const blueAvail = available.filter((t) => t.back === "blue").length;
+    const redAvail = available.filter((t) => t.back === "red").length;
+
+    optWormholes.max = String(Math.min(wormholeAvail, n));
+    optWormholes.value = String(Math.min(Number(optWormholes.value) || 0, Number(optWormholes.max)));
+    optEntropic.max = String(Math.min(entropicAvail, 2, n));
+    optEntropic.value = String(Math.min(Number(optEntropic.value) || 0, Number(optEntropic.max)));
+    optLegendary.max = String(Math.min(legendaryAvail, n));
+    optLegendary.value = String(Math.min(Number(optLegendary.value) || 0, Number(optLegendary.max)));
+
+    if (!optRatio.dataset.touched) {
+      const naturalBluePct = blueAvail + redAvail > 0 ? Math.round((100 * blueAvail) / (blueAvail + redAvail)) : 50;
+      optRatio.value = String(naturalBluePct);
+    }
+    updateRatioLabel();
+  }
+
+  function randomizeWithOptions(opts) {
+    const emptyKeys = shuffle(emptySlotKeys());
+    const n = emptyKeys.length;
+
+    const available = visiblePoolTiles();
+    const used = new Set();
+    const selected = [];
+
+    function takeRandom(candidates, count) {
+      const pickable = shuffle(candidates.filter((t) => !used.has(poolKey(t))));
+      const take = pickable.slice(0, Math.max(0, Math.min(count, n - selected.length)));
+      take.forEach((t) => {
+        used.add(poolKey(t));
+        selected.push(t);
+      });
+    }
+
+    takeRandom(available.filter((t) => t.planets.some((p) => p.legendary)), opts.legendaryMin);
+    takeRandom(available.filter((t) => t.anomalies.includes("entropicScar")), opts.entropicScarCount);
+    takeRandom(available.filter((t) => t.wormholes.length > 0), opts.wormholeCount);
+
+    const remaining = n - selected.length;
+    const rest = shuffle(
+      available.filter((t) => !used.has(poolKey(t)) && t.wormholes.length === 0 && !t.anomalies.includes("entropicScar"))
+    );
+    const blues = rest.filter((t) => t.back === "blue");
+    const reds = rest.filter((t) => t.back === "red");
+    const blueTarget = Math.round((remaining * opts.bluePct) / 100);
+    const takeBlue = Math.min(blueTarget, blues.length);
+    const takeRed = Math.min(remaining - takeBlue, reds.length);
+    selected.push(...blues.slice(0, takeBlue), ...reds.slice(0, takeRed));
+
+    const stillNeeded = remaining - takeBlue - takeRed;
+    if (stillNeeded > 0) {
+      const usedNow = new Set(selected.map(poolKey));
+      const leftover = rest.filter((t) => !usedNow.has(poolKey(t))).slice(0, stillNeeded);
+      selected.push(...leftover);
+    }
+
+    shuffle(selected);
     emptyKeys.forEach((key, i) => {
-      const tile = available[i];
+      const tile = selected[i];
       if (!tile) return;
       pool.delete(poolKey(tile));
       board.set(key, tile);
     });
+
     selectedPoolKey = null;
     persist();
     renderAll();
@@ -358,6 +423,7 @@
       const j = Math.floor(Math.random() * (i + 1));
       [arr[i], arr[j]] = [arr[j], arr[i]];
     }
+    return arr;
   }
 
   function clearBoard() {
@@ -488,6 +554,15 @@
   function init() {
     document.getElementById("btn-randomize").addEventListener("click", openRandomizeModal);
     document.getElementById("btn-randomize-cancel").addEventListener("click", closeRandomizeModal);
+    document.getElementById("btn-randomize-apply").addEventListener("click", () => {
+      randomizeWithOptions({
+        bluePct: Number(optRatio.value),
+        wormholeCount: Number(optWormholes.value),
+        entropicScarCount: Number(optEntropic.value),
+        legendaryMin: Number(optLegendary.value),
+      });
+      closeRandomizeModal();
+    });
     optRatio.addEventListener("input", () => {
       optRatio.dataset.touched = "1";
       updateRatioLabel();
