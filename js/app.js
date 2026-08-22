@@ -240,11 +240,11 @@
   // Slightly smaller than PLANET_RADIUS: the triangle's top slot has to
   // clear the tile's own "#id" label directly above it (fixed at y-40),
   // which a full-size circle can't do without the two touching.
-  const TRIANGLE_RADIUS = 17;
+  const TRIANGLE_RADIUS = 15;
   const TRIANGLE_SLOTS = [
-    { dx: 0, dy: -16 },
-    { dx: -36, dy: 8 },
-    { dx: 36, dy: 8 },
+    { dx: 0, dy: -14 },
+    { dx: -30, dy: 10 },
+    { dx: 30, dy: 10 },
   ];
 
   function drawPlanetCluster(g, cx, cy, planets) {
@@ -252,7 +252,7 @@
     if (count === 3) {
       // Name boxes are capped tighter than the single-planet default here
       // since three of them share much less room side-to-side.
-      planets.forEach((p, i) => drawPlanet(g, cx + TRIANGLE_SLOTS[i].dx, cy + TRIANGLE_SLOTS[i].dy, TRIANGLE_RADIUS, p, 30));
+      planets.forEach((p, i) => drawPlanet(g, cx + TRIANGLE_SLOTS[i].dx, cy + TRIANGLE_SLOTS[i].dy, TRIANGLE_RADIUS, p, 24));
       return;
     }
     const spacing = count === 1 ? 0 : 48;
@@ -462,15 +462,24 @@
     forEachPixelCell((px, py) => {
       const dist = Math.hypot(px, py);
       if (dist > 46) return;
-      const angle = Math.atan2(py, px);
-      const spiral = ((angle + dist * 0.16) % (Math.PI / 2) + Math.PI / 2) % (Math.PI / 2);
-      if (dist < 9) {
-        g.appendChild(pixelRect(px, py, "#020103", 1));
-      } else if (spiral > 1.0 && spiral < 1.45) {
-        g.appendChild(pixelRect(px, py, "#d9baff", 0.95));
-      } else {
-        g.appendChild(pixelRect(px, py, "#120a1e", 0.8));
+      // Flattening the ring/disk distance (not the core) suggests an
+      // accretion disk viewed at an angle, like a black hole.
+      const diskDist = Math.hypot(px, py * 1.8);
+      if (dist < 13) {
+        g.appendChild(pixelRect(px, py, "#000000", 1));
+        return;
       }
+      if (diskDist >= 13 && diskDist < 19) {
+        g.appendChild(pixelRect(px, py, "#fff3d6", 0.95));
+        return;
+      }
+      if (diskDist >= 19 && diskDist < 34) {
+        const t = (diskDist - 19) / 15;
+        const color = t < 0.4 ? "#ffb347" : t < 0.75 ? "#ff7a3c" : "#a83a1f";
+        g.appendChild(pixelRect(px, py, color, 0.8 - t * 0.3));
+        return;
+      }
+      g.appendChild(pixelRect(px, py, "#0a0a12", 0.5));
     });
   }
 
