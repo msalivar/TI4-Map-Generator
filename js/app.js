@@ -66,7 +66,6 @@
   const paletteBlue = document.getElementById("palette-blue");
   const paletteRed = document.getElementById("palette-red");
   const tooltip = document.getElementById("tile-tooltip");
-  const playerLabelsEl = document.getElementById("player-labels");
   const tileSetsEl = document.getElementById("tile-sets");
   const randomizeModal = document.getElementById("randomize-modal");
   const optBlueCount = document.getElementById("opt-blue-count");
@@ -610,16 +609,6 @@
     return parts.join(" | ");
   }
 
-  function renderPlayerLabels() {
-    playerLabelsEl.innerHTML = "";
-    playerNames.forEach((name, i) => {
-      const div = document.createElement("div");
-      div.className = "player-label";
-      div.textContent = name || `Player ${i + 1}`;
-      playerLabelsEl.appendChild(div);
-    });
-  }
-
   function renderAll() {
     renderBoard();
     renderPalette();
@@ -793,7 +782,6 @@
       }
     });
     selectedPoolKey = null;
-    renderPlayerLabels();
     renderTileSetToggles();
     renderAll();
   }
@@ -926,7 +914,6 @@
     } catch (e) {
       saved = null;
     }
-    renderPlayerLabels();
     renderTileSetToggles();
     if (saved) {
       loadFromObject(saved);

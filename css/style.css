@@ -188,23 +188,6 @@ button:hover, .file-btn:hover {
   stroke-linejoin: round;
 }
 
-.player-labels {
-  flex: 0 0 auto;
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
-  gap: 6px;
-  margin-top: 6px;
-}
-.player-label {
-  background: var(--panel-2);
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  color: var(--text-dim);
-  padding: 4px 8px;
-  font-size: 0.8rem;
-  text-align: center;
-}
-
 .palette-panel {
   position: relative;
   min-height: 0;
