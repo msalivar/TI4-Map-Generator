@@ -106,7 +106,7 @@ const RED_TILES = [
   { id: 66, planets: [makePlanet("Everra", 3, 1, "cultural")] },
   { id: 67, planets: [] },
   { id: 68, planets: [] },
-  { id: 69, planets: [makePlanet("Kraag", 0, 2, null)] },
+  { id: 69, planets: [makePlanet("Kraag", 0, 2, "hazardous"), makePlanet("Siig", 1, 1, "hazardous")] },
   { id: 70, planets: [] },
 ];
 
