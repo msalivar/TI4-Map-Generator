@@ -24,7 +24,6 @@
   let enabledSets = new Set(TILE_SETS.map((s) => s.key));
 
   const TRAIT_COLORS = { cultural: "#3fa34d", industrial: "#4d7bd1", hazardous: "#d9542f" };
-  const TECH_COLORS = { warfare: "#e0524f", propulsion: "#4d7bd1", biotic: "#3fa34d", cybernetic: "#e0b93f" };
   const WORMHOLE_COLORS = { alpha: "#e0902f", beta: "#3fa34d", gamma: "#c9576f", delta: "#7a6fd0", epsilon: "#4d7bd1" };
   const WORMHOLE_SYMBOLS = { alpha: "α", beta: "β", gamma: "γ", delta: "δ", epsilon: "ε" };
   const WORMHOLE_ICON_SLOTS = [
@@ -181,12 +180,6 @@
     });
   }
 
-  function trianglePoints(cx, cy, size) {
-    return [[cx, cy - size], [cx - size, cy + size], [cx + size, cy + size]]
-      .map((p) => p.join(","))
-      .join(" ");
-  }
-
   const LEGENDARY_SCALE = 1.25;
 
   function drawPlanetCluster(g, cx, cy, planets) {
@@ -217,10 +210,16 @@
         width: badgeSize,
         height: badgeSize,
       }));
-    } else if (planet.tech) {
-      g.appendChild(svgEl("polygon", {
-        points: trianglePoints(cx, cy - r - 6, 5),
-        fill: TECH_COLORS[planet.tech] || "#9aa4c0",
+    } else if (planet.tech && TECH_ICON_DATA_URIS[planet.tech]) {
+      // Centered on the circle's top edge, straddling the boundary, rather
+      // than floating above it.
+      const iconSize = r * 0.62;
+      g.appendChild(svgEl("image", {
+        href: TECH_ICON_DATA_URIS[planet.tech],
+        x: cx - iconSize / 2,
+        y: cy - r - iconSize / 2,
+        width: iconSize,
+        height: iconSize,
       }));
     }
 
