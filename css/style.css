@@ -119,16 +119,30 @@ button:hover, .file-btn:hover {
   top: 8px;
   left: 8px;
   z-index: 10;
-  background: rgba(6, 8, 16, 0.85);
+  background: rgba(6, 8, 16, 0.88);
   border: 1px solid var(--border);
   border-radius: 8px;
-  padding: 6px 10px;
-  font-size: 0.72rem;
+  padding: 8px 10px;
+  font-size: 0.7rem;
   color: var(--text-dim);
-  line-height: 1.6;
+  line-height: 1.5;
   pointer-events: none;
+  max-width: 210px;
 }
-.stats-row {
+.stats-heading {
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  font-size: 0.6rem;
+  margin-top: 6px;
+}
+.stats-heading:first-child { margin-top: 0; }
+.stats-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0 10px;
+}
+.stats-item {
   display: flex;
   align-items: center;
   gap: 4px;
@@ -144,7 +158,6 @@ button:hover, .file-btn:hover {
 .stats-num {
   color: var(--text);
   font-weight: 700;
-  margin-right: 3px;
 }
 
 #board-svg {

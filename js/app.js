@@ -151,20 +151,33 @@
     });
 
     function swatch(color) {
-      return `<span class="stats-swatch" style="background:${color}"></span>`;
+      return color ? `<span class="stats-swatch" style="background:${color}"></span>` : "";
     }
+    function item(color, value, label) {
+      return `<div class="stats-item">${swatch(color)}<span class="stats-num">${value}</span> ${label}</div>`;
+    }
+    const TECH_LABELS = { warfare: "Warfare", propulsion: "Propulsion", biotic: "Biotic", cybernetic: "Cybernetic" };
+    const TRAIT_LABELS = { cultural: "Cultural", industrial: "Industrial", hazardous: "Hazardous" };
 
     boardStatsEl.innerHTML = `
-      <div class="stats-row">${swatch("var(--blue-tile-edge)")}<span class="stats-num">${blueCount}</span>blue
-        &nbsp;${swatch("var(--red-tile-edge)")}<span class="stats-num">${redCount}</span>red</div>
-      <div class="stats-row"><span class="stats-num">${resources}</span>res
-        &nbsp;<span class="stats-num">${influence}</span>inf</div>
-      <div class="stats-row">${Object.entries(techCounts)
-        .map(([k, v]) => `${swatch(TECH_SWATCH_COLORS[k])}<span class="stats-num">${v}</span>`)
-        .join(" ")}</div>
-      <div class="stats-row">${Object.entries(traitCounts)
-        .map(([k, v]) => `${swatch(TRAIT_COLORS[k])}<span class="stats-num">${v}</span>`)
-        .join(" ")}</div>
+      <div class="stats-heading">Tiles</div>
+      <div class="stats-grid">
+        ${item("var(--blue-tile-edge)", blueCount, "Blue")}
+        ${item("var(--red-tile-edge)", redCount, "Red")}
+      </div>
+      <div class="stats-heading">Totals</div>
+      <div class="stats-grid">
+        ${item(null, resources, "Resources")}
+        ${item(null, influence, "Influence")}
+      </div>
+      <div class="stats-heading">Tech Skips</div>
+      <div class="stats-grid">
+        ${Object.entries(techCounts).map(([k, v]) => item(TECH_SWATCH_COLORS[k], v, TECH_LABELS[k])).join("")}
+      </div>
+      <div class="stats-heading">Planet Traits</div>
+      <div class="stats-grid">
+        ${Object.entries(traitCounts).map(([k, v]) => item(TRAIT_COLORS[k], v, TRAIT_LABELS[k])).join("")}
+      </div>
     `;
   }
 
@@ -224,10 +237,14 @@
   const LEGENDARY_SCALE = 1.25;
 
   const PLANET_RADIUS = 20;
+  // Slightly smaller than PLANET_RADIUS: the triangle's top slot has to
+  // clear the tile's own "#id" label directly above it (fixed at y-40),
+  // which a full-size circle can't do without the two touching.
+  const TRIANGLE_RADIUS = 17;
   const TRIANGLE_SLOTS = [
-    { dx: 0, dy: -20 },
-    { dx: -36, dy: 8 },
-    { dx: 36, dy: 8 },
+    { dx: 0, dy: -16 },
+    { dx: -34, dy: 8 },
+    { dx: 34, dy: 8 },
   ];
 
   function drawPlanetCluster(g, cx, cy, planets) {
@@ -235,7 +252,7 @@
     if (count === 3) {
       // Name boxes are capped tighter than the single-planet default here
       // since three of them share much less room side-to-side.
-      planets.forEach((p, i) => drawPlanet(g, cx + TRIANGLE_SLOTS[i].dx, cy + TRIANGLE_SLOTS[i].dy, PLANET_RADIUS, p, 30));
+      planets.forEach((p, i) => drawPlanet(g, cx + TRIANGLE_SLOTS[i].dx, cy + TRIANGLE_SLOTS[i].dy, TRIANGLE_RADIUS, p, 30));
       return;
     }
     const spacing = count === 1 ? 0 : 48;
@@ -263,7 +280,29 @@
       "stroke-width": planet.legendary ? 2.5 : 1,
     }));
 
-    if (planet.legendary) {
+    const hasTechIcon = planet.tech && TECH_ICON_DATA_URIS[planet.tech];
+    if (planet.legendary && hasTechIcon) {
+      // Some legendary planets (e.g. Faunus, Tempesta) also carry a tech
+      // specialty -- show both, side by side on the circle's top edge,
+      // rather than letting the legendary badge hide the tech icon.
+      const badgeSize = r * 0.62;
+      const iconSize = r * 0.6;
+      const offsetX = r * 0.44;
+      planetGroup.appendChild(svgEl("image", {
+        href: LEGENDARY_BADGE_DATA_URI,
+        x: cx - offsetX - badgeSize / 2,
+        y: cy - r - badgeSize / 2,
+        width: badgeSize,
+        height: badgeSize,
+      }));
+      planetGroup.appendChild(svgEl("image", {
+        href: TECH_ICON_DATA_URIS[planet.tech],
+        x: cx + offsetX - iconSize / 2,
+        y: cy - r - iconSize / 2,
+        width: iconSize,
+        height: iconSize,
+      }));
+    } else if (planet.legendary) {
       const badgeSize = r * 0.8;
       planetGroup.appendChild(svgEl("image", {
         href: LEGENDARY_BADGE_DATA_URI,
@@ -272,7 +311,7 @@
         width: badgeSize,
         height: badgeSize,
       }));
-    } else if (planet.tech && TECH_ICON_DATA_URIS[planet.tech]) {
+    } else if (hasTechIcon) {
       // Centered on the circle's top edge, straddling the boundary, rather
       // than floating above it.
       const iconSize = r * 0.78;
