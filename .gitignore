@@ -3,3 +3,5 @@ Thumbs.db
 node_modules/
 *.log
 .claude/settings.local.json
+ti4-map.png
+ti4-map.json

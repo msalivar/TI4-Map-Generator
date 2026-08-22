@@ -132,6 +132,7 @@ button:hover, .file-btn:hover {
 .hex.red { fill: var(--red-tile); stroke: var(--red-tile-edge); cursor: grab; }
 .hex.home { fill: var(--home-tile); stroke: var(--home-tile-edge); }
 .hex.mecatol { fill: #4a3a1a; stroke: var(--accent-2); }
+.hex.anomaly-tile { stroke: #ff5566; stroke-dasharray: 5 3; stroke-width: 2.5; }
 .hex.drag-source { opacity: 0.35; }
 .hex.drop-target { stroke: var(--accent-2); stroke-width: 4; filter: brightness(1.3); }
 .hex.drop-invalid { stroke: #c9576f; stroke-width: 3; stroke-dasharray: 4 3; }
@@ -156,8 +157,27 @@ button:hover, .file-btn:hover {
   pointer-events: none;
   user-select: none;
 }
-.pip {
+.planet-badge-text {
+  fill: #fff;
+  font-size: 7px;
+  font-weight: 700;
+  text-anchor: middle;
   pointer-events: none;
+  user-select: none;
+}
+.planet-name {
+  fill: var(--text-dim);
+  font-size: 6.5px;
+  text-anchor: middle;
+  pointer-events: none;
+  user-select: none;
+}
+.wormhole-icon-label {
+  font-size: 8px;
+  font-weight: 700;
+  text-anchor: middle;
+  pointer-events: none;
+  user-select: none;
 }
 
 .player-labels {

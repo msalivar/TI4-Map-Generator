@@ -23,6 +23,23 @@
   ];
   let enabledSets = new Set(TILE_SETS.map((s) => s.key));
 
+  const TRAIT_COLORS = { cultural: "#3fa34d", industrial: "#4d7bd1", hazardous: "#d9542f" };
+  const TECH_COLORS = { warfare: "#e0524f", propulsion: "#4d7bd1", biotic: "#3fa34d", cybernetic: "#e0b93f" };
+  const WORMHOLE_COLORS = { alpha: "#e0902f", beta: "#3fa34d", gamma: "#c9576f", delta: "#7a6fd0", epsilon: "#4d7bd1" };
+  const WORMHOLE_SYMBOLS = { alpha: "α", beta: "β", gamma: "γ", delta: "δ", epsilon: "ε" };
+  const WORMHOLE_ICON_SLOTS = [
+    { dx: 32, dy: -30 },
+    { dx: -32, dy: -30 },
+  ];
+  const ASTEROID_DOTS = [
+    { dx: -20, dy: -18, r: 3 }, { dx: -6, dy: -26, r: 2.5 }, { dx: 14, dy: -20, r: 3.5 },
+    { dx: 24, dy: -4, r: 2.5 }, { dx: 18, dy: 14, r: 3 }, { dx: 0, dy: 22, r: 2.5 },
+    { dx: -18, dy: 12, r: 3 }, { dx: -26, dy: -2, r: 2.5 }, { dx: 4, dy: 2, r: 2 },
+  ];
+  const NEBULA_BLOBS = [
+    { dx: -10, dy: -8, r: 20 }, { dx: 12, dy: 6, r: 16 }, { dx: -4, dy: 16, r: 14 },
+  ];
+
   function poolKey(tile) {
     return `${tile.set}-${tile.back}-${tile.id}`;
   }
@@ -133,7 +150,12 @@
   }
 
   function drawTile(g, x, y, tile, backClass, key, removable) {
-    const poly = svgEl("polygon", { points: hexPolygonPoints(x, y), class: `hex ${backClass}`, "data-key": key });
+    const isAnomaly = tile.anomalies.length > 0;
+    const poly = svgEl("polygon", {
+      points: hexPolygonPoints(x, y),
+      class: `hex ${backClass}` + (isAnomaly ? " anomaly-tile" : ""),
+      "data-key": key,
+    });
     if (removable) {
       poly.addEventListener("click", () => onFilledClick(key));
       poly.addEventListener("pointerdown", (e) => startTileDrag(e, poly, key));
@@ -142,30 +164,135 @@
     poly.addEventListener("mouseleave", hideTooltip);
     g.appendChild(poly);
 
+    if (isAnomaly) drawAnomalyBackground(g, x, y, tile.anomalies);
+
     const num = svgEl("text", { x, y: y - 40, class: "hex-label hex-id-label" });
     num.textContent = tile.type === "mecatol" ? "Mecatol Rex" : `#${tile.id}`;
     g.appendChild(num);
 
     if (tile.planets.length) {
-      const names = tile.planets.map((p) => p.name).join(" / ");
-      const sub = svgEl("text", { x, y: y + 6, class: "hex-sublabel" });
-      sub.textContent = truncate(names, 16);
-      g.appendChild(sub);
-
-      const ri = tile.planets.map((p) => `${p.resources}/${p.influence}`).join("  ");
-      const pip = svgEl("text", { x, y: y + 20, class: "hex-sublabel pip" });
-      pip.textContent = ri;
-      g.appendChild(pip);
+      drawPlanetCluster(g, x, y - 4, tile.planets);
     }
 
-    const tags = [];
-    tile.wormholes.forEach((w) => tags.push(WORMHOLE_LABELS[w] || w));
-    tile.anomalies.forEach((a) => tags.push(ANOMALY_LABELS[a] || a));
-    if (tags.length) {
-      const tagEl = svgEl("text", { x, y: y + 34, class: "hex-sublabel" });
-      tagEl.textContent = tags.join(", ");
-      g.appendChild(tagEl);
+    tile.wormholes.forEach((w, i) => {
+      const slot = WORMHOLE_ICON_SLOTS[i] || WORMHOLE_ICON_SLOTS[WORMHOLE_ICON_SLOTS.length - 1];
+      drawWormholeIcon(g, x + slot.dx, y + slot.dy, w);
+    });
+  }
+
+  function trianglePoints(cx, cy, size) {
+    return [[cx, cy - size], [cx - size, cy + size], [cx + size, cy + size]]
+      .map((p) => p.join(","))
+      .join(" ");
+  }
+
+  function drawPlanetCluster(g, cx, cy, planets) {
+    const count = planets.length;
+    const spacing = count === 1 ? 0 : count === 2 ? 24 : 28;
+    const radius = count === 1 ? 15 : count === 2 ? 12 : 9;
+    planets.forEach((p, i) => {
+      const offset = (i - (count - 1) / 2) * spacing;
+      drawPlanet(g, cx + offset, cy, radius, p);
+    });
+  }
+
+  function drawPlanet(g, cx, cy, r, planet) {
+    const fill = TRAIT_COLORS[planet.trait] || "#5a6580";
+    const circle = svgEl("circle", {
+      cx, cy, r, fill,
+      stroke: planet.legendary ? "#ffd76a" : "#0b0e17",
+      "stroke-width": planet.legendary ? 2.5 : 1,
+    });
+    g.appendChild(circle);
+
+    if (planet.legendary) {
+      const badgeSize = r * 1.1;
+      const badge = svgEl("image", {
+        href: LEGENDARY_BADGE_DATA_URI,
+        x: cx - badgeSize / 2,
+        y: cy - r - badgeSize + 4,
+        width: badgeSize,
+        height: badgeSize,
+      });
+      g.appendChild(badge);
+    } else if (planet.tech) {
+      const tri = svgEl("polygon", {
+        points: trianglePoints(cx, cy - r - 6, 5),
+        fill: TECH_COLORS[planet.tech] || "#9aa4c0",
+      });
+      g.appendChild(tri);
     }
+
+    const badgeY = cy + r + 7;
+    const resBadge = svgEl("circle", { cx: cx - 8, cy: badgeY, r: 6.5, fill: "#3fa34d" });
+    g.appendChild(resBadge);
+    const resText = svgEl("text", { x: cx - 8, y: badgeY + 2.5, class: "planet-badge-text" });
+    resText.textContent = planet.resources;
+    g.appendChild(resText);
+
+    const infBadge = svgEl("circle", { cx: cx + 8, cy: badgeY, r: 6.5, fill: "#4d7bd1" });
+    g.appendChild(infBadge);
+    const infText = svgEl("text", { x: cx + 8, y: badgeY + 2.5, class: "planet-badge-text" });
+    infText.textContent = planet.influence;
+    g.appendChild(infText);
+
+    const nameText = svgEl("text", { x: cx, y: badgeY + 15, class: "planet-name" });
+    nameText.textContent = truncate(planet.name, 10);
+    g.appendChild(nameText);
+  }
+
+  function drawWormholeIcon(g, x, y, type) {
+    const color = WORMHOLE_COLORS[type] || "#9aa4c0";
+    const circle = svgEl("circle", { cx: x, cy: y, r: 9, fill: "#0b0e17", stroke: color, "stroke-width": 2 });
+    g.appendChild(circle);
+    const label = svgEl("text", { x, y: y + 3, class: "wormhole-icon-label", fill: color });
+    label.textContent = WORMHOLE_SYMBOLS[type] || "?";
+    g.appendChild(label);
+  }
+
+  function drawSupernova(g, x, y) {
+    g.appendChild(svgEl("circle", { cx: x, cy: y, r: 34, fill: "#ff7a3c", opacity: 0.18 }));
+    g.appendChild(svgEl("circle", { cx: x, cy: y, r: 22, fill: "#ff9a4a", opacity: 0.35 }));
+    g.appendChild(svgEl("circle", { cx: x, cy: y, r: 11, fill: "#ffe08a", opacity: 0.85 }));
+  }
+
+  function drawAsteroidField(g, x, y) {
+    ASTEROID_DOTS.forEach((d) => {
+      g.appendChild(svgEl("circle", { cx: x + d.dx, cy: y + d.dy, r: d.r, fill: "#9aa4c0", opacity: 0.55 }));
+    });
+  }
+
+  function drawNebula(g, x, y) {
+    NEBULA_BLOBS.forEach((b) => {
+      g.appendChild(svgEl("circle", { cx: x + b.dx, cy: y + b.dy, r: b.r, fill: "#b06fd6", opacity: 0.22 }));
+    });
+  }
+
+  function drawGravityRift(g, x, y) {
+    g.appendChild(svgEl("circle", { cx: x, cy: y, r: 24, fill: "#0a0a12", opacity: 0.9 }));
+    g.appendChild(svgEl("circle", { cx: x, cy: y, r: 24, fill: "none", stroke: "#b98bff", "stroke-width": 3, opacity: 0.8 }));
+  }
+
+  function drawEntropicScar(g, x, y) {
+    g.appendChild(svgEl("circle", { cx: x, cy: y, r: 24, fill: "#170826", opacity: 0.9 }));
+    g.appendChild(svgEl("circle", {
+      cx: x, cy: y, r: 24, fill: "none", stroke: "#e04dff", "stroke-width": 2.5, "stroke-dasharray": "5 4", opacity: 0.9,
+    }));
+  }
+
+  const ANOMALY_DRAWERS = {
+    supernova: drawSupernova,
+    asteroid: drawAsteroidField,
+    nebula: drawNebula,
+    rift: drawGravityRift,
+    entropicScar: drawEntropicScar,
+  };
+
+  function drawAnomalyBackground(g, x, y, anomalies) {
+    anomalies.forEach((type) => {
+      const drawer = ANOMALY_DRAWERS[type];
+      if (drawer) drawer(g, x, y);
+    });
   }
 
   function truncate(s, n) {
@@ -520,8 +647,13 @@
     .hex.red { fill: #5a2733; stroke: #c9576f; }
     .hex.home { fill: #2e3a2a; stroke: #7fae5a; }
     .hex.mecatol { fill: #4a3a1a; stroke: #ffb347; }
+    .hex.anomaly-tile { stroke: #ff5566; stroke-dasharray: 5 3; stroke-width: 2.5; }
     .hex-label { fill: #e8ecf7; font-size: 11px; font-family: "Segoe UI", system-ui, sans-serif; text-anchor: middle; }
+    .hex-id-label { font-size: 8px; opacity: 0.7; }
     .hex-sublabel { fill: #9aa4c0; font-size: 9px; font-family: "Segoe UI", system-ui, sans-serif; text-anchor: middle; }
+    .planet-badge-text { fill: #fff; font-size: 7px; font-weight: 700; font-family: "Segoe UI", system-ui, sans-serif; text-anchor: middle; }
+    .planet-name { fill: #9aa4c0; font-size: 6.5px; font-family: "Segoe UI", system-ui, sans-serif; text-anchor: middle; }
+    .wormhole-icon-label { font-size: 8px; font-weight: 700; font-family: "Segoe UI", system-ui, sans-serif; text-anchor: middle; }
   `;
 
   function exportPng() {
