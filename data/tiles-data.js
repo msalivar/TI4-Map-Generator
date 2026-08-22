@@ -165,7 +165,7 @@ const THUNDERS_EDGE_TILES = [
   { id: 111, back: "blue", planets: [makePlanet("Tarana", 1, 2, "cultural"), makePlanet("Oluz Station", 1, 1, null, null, false, true)] },
   { id: 113, back: "red", planets: [], anomalies: ["rift"], wormholes: ["beta"] },
   { id: 114, back: "red", planets: [], anomalies: ["entropicScar"] },
-  { id: 115, back: "red", planets: [makePlanet("Industrex", 2, 0, "industrial", "warfare")], anomalies: ["asteroid"] },
+  { id: 115, back: "red", planets: [makePlanet("Industrex", 2, 0, "industrial", "warfare", true)], anomalies: ["asteroid"] },
   { id: 116, back: "red", planets: [makePlanet("Lemox", 0, 3, "industrial")], anomalies: ["entropicScar"] },
   { id: 117, back: "red", planets: [makePlanet("The Watchtower", 1, 1, null, null, false, true)], anomalies: ["rift", "asteroid"] },
 ];
