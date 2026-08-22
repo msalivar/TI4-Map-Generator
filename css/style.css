@@ -379,6 +379,17 @@ button:hover, .file-btn:hover {
   font-size: 0.75rem;
   opacity: 0.8;
 }
+.modal-error {
+  color: var(--red-tile-edge);
+  font-size: 0.8rem;
+  border: 1px solid var(--red-tile-edge);
+  background: rgba(201, 87, 111, 0.12);
+  border-radius: 6px;
+  padding: 8px 10px;
+}
+.modal-error.hidden {
+  display: none;
+}
 .modal-actions {
   display: flex;
   justify-content: flex-end;

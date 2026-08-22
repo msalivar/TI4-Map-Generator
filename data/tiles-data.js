@@ -33,7 +33,7 @@ const MECATOL_REX = {
   back: "none",
   set: "base",
   name: "Mecatol Rex",
-  planets: [{ name: "Mecatol Rex", resources: 1, influence: 6, trait: null, tech: null, legendary: false, station: false }],
+  planets: [{ name: "Mecatol Rex", resources: 1, influence: 6, trait: null, tech: null, legendary: true, station: false }],
   wormholes: [],
   anomalies: [],
 };

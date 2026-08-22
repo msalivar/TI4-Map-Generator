@@ -53,6 +53,10 @@
   <div id="randomize-modal" class="modal-overlay hidden">
     <div class="modal">
       <h2>Randomize empty tiles</h2>
+      <div class="modal-field">
+        Tile sets to draw from
+        <div id="tile-sets-modal" class="tile-set-list"></div>
+      </div>
       <label class="modal-field">
         <span id="blue-count-label">0 blue / 0 red</span>
         <input type="range" id="opt-blue-count" min="0" max="0" step="1" value="0" />
@@ -70,6 +74,7 @@
         Legendary planets (minimum)
         <select id="opt-legendary"></select>
       </label>
+      <div id="randomize-error" class="modal-error hidden"></div>
       <div class="modal-actions">
         <button id="btn-randomize-cancel">Cancel</button>
         <button id="btn-randomize-apply">Randomize</button>

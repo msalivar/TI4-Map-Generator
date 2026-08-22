@@ -44,22 +44,27 @@
   }
 
   function renderTileSetToggles() {
-    tileSetsEl.innerHTML = "";
-    TILE_SETS.forEach((s) => {
-      const label = document.createElement("label");
-      label.className = "tile-set-toggle";
-      const checkbox = document.createElement("input");
-      checkbox.type = "checkbox";
-      checkbox.checked = enabledSets.has(s.key);
-      checkbox.addEventListener("change", () => {
-        if (checkbox.checked) enabledSets.add(s.key);
-        else enabledSets.delete(s.key);
-        persist();
-        renderAll();
+    [tileSetsEl, tileSetsModalEl].forEach((container) => {
+      if (!container) return;
+      container.innerHTML = "";
+      TILE_SETS.forEach((s) => {
+        const label = document.createElement("label");
+        label.className = "tile-set-toggle";
+        const checkbox = document.createElement("input");
+        checkbox.type = "checkbox";
+        checkbox.checked = enabledSets.has(s.key);
+        checkbox.addEventListener("change", () => {
+          if (checkbox.checked) enabledSets.add(s.key);
+          else enabledSets.delete(s.key);
+          persist();
+          renderAll();
+          renderTileSetToggles();
+          if (!randomizeModal.classList.contains("hidden")) updateRandomizeBounds();
+        });
+        label.appendChild(checkbox);
+        label.appendChild(document.createTextNode(" " + s.label));
+        container.appendChild(label);
       });
-      label.appendChild(checkbox);
-      label.appendChild(document.createTextNode(" " + s.label));
-      tileSetsEl.appendChild(label);
     });
   }
 
@@ -68,6 +73,8 @@
   const paletteRed = document.getElementById("palette-red");
   const tooltip = document.getElementById("tile-tooltip");
   const tileSetsEl = document.getElementById("tile-sets");
+  const tileSetsModalEl = document.getElementById("tile-sets-modal");
+  const randomizeErrorEl = document.getElementById("randomize-error");
   const boardStatsEl = document.getElementById("board-stats");
   const randomizeModal = document.getElementById("randomize-modal");
   const optBlueCount = document.getElementById("opt-blue-count");
@@ -730,6 +737,7 @@
 
   function openRandomizeModal() {
     updateRandomizeBounds();
+    randomizeErrorEl.classList.add("hidden");
     randomizeModal.classList.remove("hidden");
   }
 
@@ -762,6 +770,46 @@
       optBlueCount.value = String(Math.min(Number(optBlueCount.value) || 0, n));
     }
     updateBlueCountLabel();
+    randomizeErrorEl.classList.add("hidden");
+  }
+
+  // Necessary AND sufficient conditions for randomizeWithOptions to fully
+  // satisfy `opts` given the current visible pool and empty-hex count `n`.
+  // (Derivation: legendary/Entropic Scar/wormhole tiles are mutually
+  // exclusive categories in every tile set today, so each forced-pick count
+  // succeeds in full as long as it doesn't exceed availability and the
+  // three minimums together don't exceed n. Every tile is exactly blue or
+  // red, so once the forced picks are satisfied, the blue/red ratio-fill
+  // succeeds in full iff blueCount/redCount don't exceed total blue/red
+  // availability.)
+  function describeUnmetRandomizeOptions(opts, n) {
+    const available = visiblePoolTiles();
+    const legendaryAvail = available.filter((t) => t.planets.some((p) => p.legendary)).length;
+    const entropicAvail = available.filter((t) => t.anomalies.includes("entropicScar")).length;
+    const wormholeAvail = available.filter((t) => t.wormholes.length > 0).length;
+    const blueAvail = available.filter((t) => t.back === "blue").length;
+    const redAvail = available.filter((t) => t.back === "red").length;
+
+    if (opts.legendaryMin > legendaryAvail) {
+      return `Only ${legendaryAvail} legendary-planet tile(s) available in the selected tile sets, but ${opts.legendaryMin} requested.`;
+    }
+    if (opts.entropicScarCount > entropicAvail) {
+      return `Only ${entropicAvail} Entropic Scar tile(s) available in the selected tile sets, but ${opts.entropicScarCount} requested.`;
+    }
+    if (opts.wormholeCount > wormholeAvail) {
+      return `Only ${wormholeAvail} wormhole tile(s) available in the selected tile sets, but ${opts.wormholeCount} requested.`;
+    }
+    const forcedTotal = opts.legendaryMin + opts.entropicScarCount + opts.wormholeCount;
+    if (forcedTotal > n) {
+      return `The legendary + Entropic Scar + wormhole minimums add up to ${forcedTotal}, but there are only ${n} empty hex(es) to fill.`;
+    }
+    if (opts.blueCount > blueAvail) {
+      return `Only ${blueAvail} blue tile(s) available in the selected tile sets, but ${opts.blueCount} requested.`;
+    }
+    if (opts.redCount > redAvail) {
+      return `Only ${redAvail} red tile(s) available in the selected tile sets, but ${opts.redCount} requested.`;
+    }
+    return null;
   }
 
   function randomizeWithOptions(opts) {
@@ -1016,13 +1064,20 @@
     document.getElementById("btn-randomize-apply").addEventListener("click", () => {
       const n = emptySlotKeys().length;
       const blueCount = Number(optBlueCount.value);
-      randomizeWithOptions({
+      const opts = {
         blueCount,
         redCount: Math.max(0, n - blueCount),
         wormholeCount: Number(optWormholes.value),
         entropicScarCount: Number(optEntropic.value),
         legendaryMin: Number(optLegendary.value),
-      });
+      };
+      const error = describeUnmetRandomizeOptions(opts, n);
+      if (error) {
+        randomizeErrorEl.textContent = error;
+        randomizeErrorEl.classList.remove("hidden");
+        return;
+      }
+      randomizeWithOptions(opts);
       closeRandomizeModal();
     });
     optBlueCount.addEventListener("input", () => {
