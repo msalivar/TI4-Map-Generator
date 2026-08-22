@@ -182,10 +182,20 @@
 
   const LEGENDARY_SCALE = 1.25;
 
+  const TRIANGLE_SLOTS = [
+    { dx: 0, dy: -18 },
+    { dx: -24, dy: 13 },
+    { dx: 24, dy: 13 },
+  ];
+
   function drawPlanetCluster(g, cx, cy, planets) {
     const count = planets.length;
-    const spacing = count === 1 ? 0 : count === 2 ? 34 : 28;
-    const radius = count === 1 ? 20 : count === 2 ? 15 : 11;
+    if (count === 3) {
+      planets.forEach((p, i) => drawPlanet(g, cx + TRIANGLE_SLOTS[i].dx, cy + TRIANGLE_SLOTS[i].dy, 9, p));
+      return;
+    }
+    const spacing = count === 1 ? 0 : 34;
+    const radius = count === 1 ? 20 : 15;
     planets.forEach((p, i) => {
       const offset = (i - (count - 1) / 2) * spacing;
       drawPlanet(g, cx + offset, cy, radius, p);
