@@ -223,27 +223,30 @@
 
   const LEGENDARY_SCALE = 1.25;
 
+  const PLANET_RADIUS = 20;
   const TRIANGLE_SLOTS = [
-    { dx: 0, dy: -18 },
-    { dx: -24, dy: 13 },
-    { dx: 24, dy: 13 },
+    { dx: 0, dy: -20 },
+    { dx: -36, dy: 8 },
+    { dx: 36, dy: 8 },
   ];
 
   function drawPlanetCluster(g, cx, cy, planets) {
     const count = planets.length;
     if (count === 3) {
-      planets.forEach((p, i) => drawPlanet(g, cx + TRIANGLE_SLOTS[i].dx, cy + TRIANGLE_SLOTS[i].dy, 9, p));
+      // Name boxes are capped tighter than the single-planet default here
+      // since three of them share much less room side-to-side.
+      planets.forEach((p, i) => drawPlanet(g, cx + TRIANGLE_SLOTS[i].dx, cy + TRIANGLE_SLOTS[i].dy, PLANET_RADIUS, p, 30));
       return;
     }
-    const spacing = count === 1 ? 0 : 34;
-    const radius = count === 1 ? 20 : 15;
+    const spacing = count === 1 ? 0 : 48;
+    const maxBoxWidth = count === 1 ? undefined : spacing - 6;
     planets.forEach((p, i) => {
       const offset = (i - (count - 1) / 2) * spacing;
-      drawPlanet(g, cx + offset, cy, radius, p);
+      drawPlanet(g, cx + offset, cy, PLANET_RADIUS, p, maxBoxWidth);
     });
   }
 
-  function drawPlanet(g, cx, cy, baseRadius, planet) {
+  function drawPlanet(g, cx, cy, baseRadius, planet, maxBoxWidth) {
     // Everything drawn for a planet is purely decorative and sits on top of
     // the hex polygon as a DOM sibling (not a descendant), so without this
     // it would silently swallow the polygon's own hover/click/drag
@@ -315,7 +318,7 @@
     infText.textContent = planet.influence;
     planetGroup.appendChild(infText);
 
-    const boxWidth = Math.max(30, Math.min(r * 3.4, 70));
+    const boxWidth = Math.max(30, Math.min(maxBoxWidth != null ? maxBoxWidth : r * 3.4, 70));
     const maxChars = Math.max(4, Math.floor((boxWidth - 6) / 3.9));
     const nameLines = wrapPlanetName(planet.name, maxChars);
     const lineHeight = 8;
