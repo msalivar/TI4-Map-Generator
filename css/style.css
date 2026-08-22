@@ -277,13 +277,19 @@ button:hover, .file-btn:hover {
   color: var(--text-dim);
 }
 .modal-field input[type="number"],
-.modal-field input[type="range"] {
+.modal-field input[type="range"],
+.modal-field select {
   background: var(--panel-2);
   border: 1px solid var(--border);
   border-radius: 6px;
   color: var(--text);
   padding: 6px 8px;
   font-size: 0.9rem;
+}
+.modal-hint {
+  color: var(--text-dim);
+  font-size: 0.75rem;
+  opacity: 0.8;
 }
 .modal-actions {
   display: flex;

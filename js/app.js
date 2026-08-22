@@ -58,11 +58,15 @@
   const playerLabelsEl = document.getElementById("player-labels");
   const tileSetsEl = document.getElementById("tile-sets");
   const randomizeModal = document.getElementById("randomize-modal");
-  const optRatio = document.getElementById("opt-ratio");
-  const ratioLabel = document.getElementById("ratio-label");
+  const optBlueCount = document.getElementById("opt-blue-count");
+  const blueCountLabel = document.getElementById("blue-count-label");
   const optWormholes = document.getElementById("opt-wormholes");
   const optEntropic = document.getElementById("opt-entropic");
   const optLegendary = document.getElementById("opt-legendary");
+
+  const BLUE_PER_PLAYER = 3; // matches the "Recommended: 3 blue / 2 red per player" hint in index.html
+  const MAX_WORMHOLES = 8;
+  const MAX_ENTROPIC_SCAR = 2;
 
   function computeViewBox() {
     const pts = cells.map((c) => axialToPixel(c.q, c.r));
@@ -323,8 +327,23 @@
     renderPalette();
   }
 
-  function updateRatioLabel() {
-    ratioLabel.textContent = `${optRatio.value}% blue / ${100 - optRatio.value}% red`;
+  function updateBlueCountLabel() {
+    const n = emptySlotKeys().length;
+    const blue = Number(optBlueCount.value) || 0;
+    const red = Math.max(0, n - blue);
+    blueCountLabel.textContent = `${blue} blue / ${red} red`;
+  }
+
+  function populateSelectRange(select, max) {
+    const current = Math.max(0, Math.min(Number(select.value) || 0, max));
+    select.innerHTML = "";
+    for (let i = 0; i <= max; i++) {
+      const option = document.createElement("option");
+      option.value = String(i);
+      option.textContent = String(i);
+      select.appendChild(option);
+    }
+    select.value = String(current);
   }
 
   function openRandomizeModal() {
@@ -349,21 +368,18 @@
     const wormholeAvail = available.filter((t) => t.wormholes.length > 0).length;
     const entropicAvail = available.filter((t) => t.anomalies.includes("entropicScar")).length;
     const legendaryAvail = available.filter((t) => t.planets.some((p) => p.legendary)).length;
-    const blueAvail = available.filter((t) => t.back === "blue").length;
-    const redAvail = available.filter((t) => t.back === "red").length;
 
-    optWormholes.max = String(Math.min(wormholeAvail, n));
-    optWormholes.value = String(Math.min(Number(optWormholes.value) || 0, Number(optWormholes.max)));
-    optEntropic.max = String(Math.min(entropicAvail, 2, n));
-    optEntropic.value = String(Math.min(Number(optEntropic.value) || 0, Number(optEntropic.max)));
-    optLegendary.max = String(Math.min(legendaryAvail, n));
-    optLegendary.value = String(Math.min(Number(optLegendary.value) || 0, Number(optLegendary.max)));
+    populateSelectRange(optWormholes, Math.min(wormholeAvail, MAX_WORMHOLES, n));
+    populateSelectRange(optEntropic, Math.min(entropicAvail, MAX_ENTROPIC_SCAR, n));
+    populateSelectRange(optLegendary, Math.min(legendaryAvail, n));
 
-    if (!optRatio.dataset.touched) {
-      const naturalBluePct = blueAvail + redAvail > 0 ? Math.round((100 * blueAvail) / (blueAvail + redAvail)) : 50;
-      optRatio.value = String(naturalBluePct);
+    optBlueCount.max = String(n);
+    if (!optBlueCount.dataset.touched) {
+      optBlueCount.value = String(Math.min(BLUE_PER_PLAYER * playerNames.length, n));
+    } else {
+      optBlueCount.value = String(Math.min(Number(optBlueCount.value) || 0, n));
     }
-    updateRatioLabel();
+    updateBlueCountLabel();
   }
 
   function randomizeWithOptions(opts) {
@@ -393,7 +409,14 @@
     takeRandom(available.filter((t) => t.anomalies.includes("entropicScar")), opts.entropicScarCount);
     takeRandom(available.filter((t) => t.wormholes.length > 0), opts.wormholeCount);
 
-    const remaining = n - selected.length;
+    // blueCount/redCount are targets for the WHOLE fill (including tiles
+    // already claimed above by the forced picks), not just for what's left
+    // — so a blue tile picked as e.g. a wormhole counts against blueCount.
+    const blueSoFar = selected.filter((t) => t.back === "blue").length;
+    const redSoFar = selected.filter((t) => t.back === "red").length;
+    const blueNeeded = Math.max(0, opts.blueCount - blueSoFar);
+    const redNeeded = Math.max(0, opts.redCount - redSoFar);
+
     // Wormhole/entropic-scar tiles are excluded here on purpose: those two
     // counts are exact targets, so any tile of those kinds not already
     // claimed above must NOT be swept up by the ratio fill below. Legendary
@@ -404,15 +427,14 @@
     );
     const blues = rest.filter((t) => t.back === "blue");
     const reds = rest.filter((t) => t.back === "red");
-    const blueTarget = Math.round((remaining * opts.bluePct) / 100);
-    const takeBlue = Math.min(blueTarget, blues.length);
-    const takeRed = Math.min(remaining - takeBlue, reds.length);
+    const takeBlue = Math.min(blueNeeded, blues.length);
+    const takeRed = Math.min(redNeeded, reds.length);
     selected.push(...blues.slice(0, takeBlue), ...reds.slice(0, takeRed));
 
-    const stillNeeded = remaining - takeBlue - takeRed;
-    if (stillNeeded > 0) {
+    const remaining = n - selected.length;
+    if (remaining > 0) {
       const usedNow = new Set(selected.map(poolKey));
-      const leftover = rest.filter((t) => !usedNow.has(poolKey(t))).slice(0, stillNeeded);
+      const leftover = rest.filter((t) => !usedNow.has(poolKey(t))).slice(0, remaining);
       selected.push(...leftover);
     }
 
@@ -566,17 +588,20 @@
     document.getElementById("btn-randomize").addEventListener("click", openRandomizeModal);
     document.getElementById("btn-randomize-cancel").addEventListener("click", closeRandomizeModal);
     document.getElementById("btn-randomize-apply").addEventListener("click", () => {
+      const n = emptySlotKeys().length;
+      const blueCount = Number(optBlueCount.value);
       randomizeWithOptions({
-        bluePct: Number(optRatio.value),
+        blueCount,
+        redCount: Math.max(0, n - blueCount),
         wormholeCount: Number(optWormholes.value),
         entropicScarCount: Number(optEntropic.value),
         legendaryMin: Number(optLegendary.value),
       });
       closeRandomizeModal();
     });
-    optRatio.addEventListener("input", () => {
-      optRatio.dataset.touched = "1";
-      updateRatioLabel();
+    optBlueCount.addEventListener("input", () => {
+      optBlueCount.dataset.touched = "1";
+      updateBlueCountLabel();
     });
     document.getElementById("btn-clear").addEventListener("click", clearBoard);
     document.getElementById("btn-export-png").addEventListener("click", exportPng);
