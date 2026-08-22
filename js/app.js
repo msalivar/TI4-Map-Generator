@@ -142,7 +142,7 @@
     poly.addEventListener("mouseleave", hideTooltip);
     g.appendChild(poly);
 
-    const num = svgEl("text", { x, y: y - (tile.planets.length ? 10 : 2), class: "hex-label" });
+    const num = svgEl("text", { x, y: y - 40, class: "hex-label hex-id-label" });
     num.textContent = tile.type === "mecatol" ? "Mecatol Rex" : `#${tile.id}`;
     g.appendChild(num);
 
@@ -310,15 +310,10 @@
   function renderPlayerLabels() {
     playerLabelsEl.innerHTML = "";
     playerNames.forEach((name, i) => {
-      const input = document.createElement("input");
-      input.value = name;
-      input.placeholder = `Player ${i + 1}`;
-      input.addEventListener("input", () => {
-        playerNames[i] = input.value;
-        persist();
-        renderBoard();
-      });
-      playerLabelsEl.appendChild(input);
+      const div = document.createElement("div");
+      div.className = "player-label";
+      div.textContent = name || `Player ${i + 1}`;
+      playerLabelsEl.appendChild(div);
     });
   }
 
@@ -603,6 +598,14 @@
       optBlueCount.dataset.touched = "1";
       updateBlueCountLabel();
     });
+    const layoutEl = document.querySelector(".layout");
+    const btnTogglePalette = document.getElementById("btn-toggle-palette");
+    btnTogglePalette.addEventListener("click", () => {
+      const collapsed = layoutEl.classList.toggle("palette-collapsed");
+      btnTogglePalette.textContent = collapsed ? "⮜" : "⮞";
+      btnTogglePalette.title = collapsed ? "Expand tile selector" : "Collapse tile selector";
+    });
+
     document.getElementById("btn-clear").addEventListener("click", clearBoard);
     document.getElementById("btn-export-png").addEventListener("click", exportPng);
     document.getElementById("btn-export-json").addEventListener("click", exportJson);
