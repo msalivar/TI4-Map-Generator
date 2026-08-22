@@ -193,9 +193,17 @@
   }
 
   function drawPlanet(g, cx, cy, baseRadius, planet) {
+    // Everything drawn for a planet is purely decorative and sits on top of
+    // the hex polygon as a DOM sibling (not a descendant), so without this
+    // it would silently swallow the polygon's own hover/click/drag
+    // listeners underneath (e.g. tooltips not showing, or a tile becoming
+    // impossible to click/drag wherever a circle or image covers it).
+    const planetGroup = svgEl("g", { "pointer-events": "none" });
+    g.appendChild(planetGroup);
+
     const r = planet.legendary ? baseRadius * LEGENDARY_SCALE : baseRadius;
     const fill = TRAIT_COLORS[planet.trait] || "#5a6580";
-    g.appendChild(svgEl("circle", {
+    planetGroup.appendChild(svgEl("circle", {
       cx, cy, r, fill,
       stroke: planet.legendary ? "#ffd76a" : "#0b0e17",
       "stroke-width": planet.legendary ? 2.5 : 1,
@@ -203,7 +211,7 @@
 
     if (planet.legendary) {
       const badgeSize = r * 0.8;
-      g.appendChild(svgEl("image", {
+      planetGroup.appendChild(svgEl("image", {
         href: LEGENDARY_BADGE_DATA_URI,
         x: cx - badgeSize / 2,
         y: cy - r - badgeSize / 2,
@@ -214,7 +222,7 @@
       // Centered on the circle's top edge, straddling the boundary, rather
       // than floating above it.
       const iconSize = r * 0.78;
-      g.appendChild(svgEl("image", {
+      planetGroup.appendChild(svgEl("image", {
         href: TECH_ICON_DATA_URIS[planet.tech],
         x: cx - iconSize / 2,
         y: cy - r - iconSize / 2,
@@ -230,17 +238,17 @@
       const sx = cx + r * 0.72;
       const sy = cy + r * 0.52;
       const ringR = r * 0.24;
-      g.appendChild(svgEl("line", {
+      planetGroup.appendChild(svgEl("line", {
         x1: sx - ringR - 3, y1: sy, x2: sx + ringR + 3, y2: sy, stroke: "#d7deee", "stroke-width": 1.4,
       }));
-      g.appendChild(svgEl("circle", { cx: sx, cy: sy, r: ringR, fill: "#232a3d", stroke: "#d7deee", "stroke-width": 1.6 }));
+      planetGroup.appendChild(svgEl("circle", { cx: sx, cy: sy, r: ringR, fill: "#232a3d", stroke: "#d7deee", "stroke-width": 1.6 }));
     }
 
     // Resource (green) and influence (blue) render as large plain numbers
     // directly on the circle. A dark stroke outline (see .planet-number in
     // CSS) keeps them legible regardless of the trait color underneath,
     // instead of relying on a separate badge background.
-    const numFontSize = Math.max(11, r * 0.7);
+    const numFontSize = Math.max(13, r * 0.82);
     const numOffsetX = r * 0.42;
     const numY = cy + numFontSize * 0.32;
 
@@ -248,13 +256,13 @@
       x: cx - numOffsetX, y: numY, class: "planet-number planet-number-res", "font-size": numFontSize,
     });
     resText.textContent = planet.resources;
-    g.appendChild(resText);
+    planetGroup.appendChild(resText);
 
     const infText = svgEl("text", {
       x: cx + numOffsetX, y: numY, class: "planet-number planet-number-inf", "font-size": numFontSize,
     });
     infText.textContent = planet.influence;
-    g.appendChild(infText);
+    planetGroup.appendChild(infText);
 
     const boxWidth = Math.max(30, Math.min(r * 3.4, 70));
     const maxChars = Math.max(4, Math.floor((boxWidth - 6) / 3.9));
@@ -262,14 +270,14 @@
     const lineHeight = 8;
     const boxHeight = nameLines.length * lineHeight + 3;
     const nameTop = cy + r + 6;
-    g.appendChild(svgEl("rect", {
+    planetGroup.appendChild(svgEl("rect", {
       x: cx - boxWidth / 2, y: nameTop, width: boxWidth, height: boxHeight, rx: 2,
       fill: "#0b0e17", opacity: 0.82,
     }));
     nameLines.forEach((line, i) => {
       const nameText = svgEl("text", { x: cx, y: nameTop + lineHeight * i + 7, class: "planet-name" });
       nameText.textContent = line;
-      g.appendChild(nameText);
+      planetGroup.appendChild(nameText);
     });
   }
 
@@ -426,7 +434,13 @@
   };
 
   function drawAnomalyBackground(g, x, y, anomalies) {
-    const wrapper = svgEl("g", { transform: `translate(${x},${y})`, "clip-path": "url(#hex-clip)" });
+    // pointer-events: none so hovering the pixel art doesn't block the
+    // hex polygon's own mousemove/mouseleave listeners underneath (the art
+    // is drawn on top of the polygon, but as a DOM sibling, not a child,
+    // so those events wouldn't otherwise reach the polygon's tooltip).
+    const wrapper = svgEl("g", {
+      transform: `translate(${x},${y})`, "clip-path": "url(#hex-clip)", "pointer-events": "none",
+    });
     anomalies.forEach((type) => {
       const drawer = ANOMALY_DRAWERS[type];
       if (drawer) drawer(wrapper);
