@@ -24,6 +24,7 @@
   let enabledSets = new Set(TILE_SETS.map((s) => s.key));
 
   const TRAIT_COLORS = { cultural: "#3fa34d", industrial: "#4d7bd1", hazardous: "#d9542f" };
+  const TECH_SWATCH_COLORS = { warfare: "#e0524f", propulsion: "#4d7bd1", biotic: "#3fa34d", cybernetic: "#e0b93f" };
   const WORMHOLE_COLORS = { alpha: "#e0902f", beta: "#3fa34d", gamma: "#c9576f", delta: "#7a6fd0", epsilon: "#4d7bd1" };
   const WORMHOLE_SYMBOLS = { alpha: "α", beta: "β", gamma: "γ", delta: "δ", epsilon: "ε" };
   const WORMHOLE_ICON_SLOTS = [
@@ -67,6 +68,7 @@
   const paletteRed = document.getElementById("palette-red");
   const tooltip = document.getElementById("tile-tooltip");
   const tileSetsEl = document.getElementById("tile-sets");
+  const boardStatsEl = document.getElementById("board-stats");
   const randomizeModal = document.getElementById("randomize-modal");
   const optBlueCount = document.getElementById("opt-blue-count");
   const blueCountLabel = document.getElementById("blue-count-label");
@@ -124,6 +126,46 @@
       }
       svg.appendChild(g);
     });
+
+    renderBoardStats();
+  }
+
+  function renderBoardStats() {
+    const allTiles = [MECATOL_REX, ...board.values()];
+    let blueCount = 0;
+    let redCount = 0;
+    let resources = 0;
+    let influence = 0;
+    const techCounts = { warfare: 0, propulsion: 0, biotic: 0, cybernetic: 0 };
+    const traitCounts = { cultural: 0, industrial: 0, hazardous: 0 };
+
+    allTiles.forEach((tile) => {
+      if (tile.back === "blue") blueCount++;
+      else if (tile.back === "red") redCount++;
+      tile.planets.forEach((p) => {
+        resources += p.resources;
+        influence += p.influence;
+        if (p.tech && techCounts[p.tech] !== undefined) techCounts[p.tech]++;
+        if (p.trait && traitCounts[p.trait] !== undefined) traitCounts[p.trait]++;
+      });
+    });
+
+    function swatch(color) {
+      return `<span class="stats-swatch" style="background:${color}"></span>`;
+    }
+
+    boardStatsEl.innerHTML = `
+      <div class="stats-row">${swatch("var(--blue-tile-edge)")}<span class="stats-num">${blueCount}</span>blue
+        &nbsp;${swatch("var(--red-tile-edge)")}<span class="stats-num">${redCount}</span>red</div>
+      <div class="stats-row"><span class="stats-num">${resources}</span>res
+        &nbsp;<span class="stats-num">${influence}</span>inf</div>
+      <div class="stats-row">${Object.entries(techCounts)
+        .map(([k, v]) => `${swatch(TECH_SWATCH_COLORS[k])}<span class="stats-num">${v}</span>`)
+        .join(" ")}</div>
+      <div class="stats-row">${Object.entries(traitCounts)
+        .map(([k, v]) => `${swatch(TRAIT_COLORS[k])}<span class="stats-num">${v}</span>`)
+        .join(" ")}</div>
+    `;
   }
 
   function drawEmpty(g, x, y, key) {
@@ -786,14 +828,70 @@
     renderAll();
   }
 
-  function exportJson() {
-    const blob = new Blob([JSON.stringify(serialize(), null, 2)], { type: "application/json" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "ti4-map.json";
-    a.click();
-    URL.revokeObjectURL(url);
+  // Map strings list one number per hex in ring order (skipping Mecatol
+  // Rex, which is always the center) -- the same convention used by other
+  // TI4 map tools: "0" for a home system, a tile's id otherwise, "-1" for a
+  // non-home hex that's still empty. `cells.slice(1)` already visits hexes
+  // in exactly that ring-by-ring order (verified against a real example
+  // string), so no reordering is needed.
+  function serializeMapString() {
+    return cells
+      .slice(1)
+      .map((c) => {
+        const key = keyFor(c.q, c.r);
+        if (homeKeys.has(key)) return "0";
+        const tile = board.get(key);
+        return tile ? String(tile.id) : "-1";
+      })
+      .join(" ");
+  }
+
+  function parseMapString(str) {
+    const tokens = str.trim().split(/\s+/).filter(Boolean);
+    const rest = cells.slice(1);
+    if (tokens.length !== rest.length) {
+      alert(`Expected ${rest.length} numbers (one per non-Mecatol hex), got ${tokens.length}.`);
+      return;
+    }
+
+    const tilesById = new Map();
+    TILE_POOL.forEach((t) => {
+      if (!tilesById.has(t.id)) tilesById.set(t.id, []);
+      tilesById.get(t.id).push(t);
+    });
+    const setPriority = { base: 0, pok: 1, "thunders-edge": 2, "discordant-stars": 3 };
+
+    const newBoard = new Map();
+    const usedKeys = new Set();
+    let badToken = null;
+
+    rest.forEach((c, i) => {
+      const token = tokens[i];
+      if (token === "0" || token === "-1") return;
+      const id = Number(token);
+      const candidates = (tilesById.get(id) || [])
+        .filter((t) => t.set === "base" || enabledSets.has(t.set))
+        .filter((t) => !usedKeys.has(poolKey(t)))
+        .sort((a, b) => (setPriority[a.set] ?? 9) - (setPriority[b.set] ?? 9));
+      const match = candidates[0];
+      if (!Number.isFinite(id) || !match) {
+        badToken = token;
+        return;
+      }
+      usedKeys.add(poolKey(match));
+      newBoard.set(keyFor(c.q, c.r), match);
+    });
+
+    if (badToken !== null) {
+      alert(`Could not import that map string — tile "${badToken}" isn't recognized, isn't enabled, or is used twice.`);
+      return;
+    }
+
+    board = newBoard;
+    pool = new Map(TILE_POOL.filter((t) => !usedKeys.has(poolKey(t))).map((t) => [poolKey(t), t]));
+    selectedPoolKey = null;
+    persist();
+    renderAll();
   }
 
   // The board's colors/fonts come from css/style.css via class names.
@@ -859,20 +957,6 @@
     img.src = url;
   }
 
-  function importJsonFile(file) {
-    const reader = new FileReader();
-    reader.onload = () => {
-      try {
-        const data = JSON.parse(reader.result);
-        loadFromObject(data);
-        persist();
-      } catch (e) {
-        alert("Could not read that file — is it a valid TI4 Map Generator JSON export?");
-      }
-    };
-    reader.readAsText(file);
-  }
-
   function init() {
     document.getElementById("btn-randomize").addEventListener("click", openRandomizeModal);
     document.getElementById("btn-randomize-cancel").addEventListener("click", closeRandomizeModal);
@@ -902,10 +986,23 @@
 
     document.getElementById("btn-clear").addEventListener("click", clearBoard);
     document.getElementById("btn-export-png").addEventListener("click", exportPng);
-    document.getElementById("btn-export-json").addEventListener("click", exportJson);
-    document.getElementById("input-import-json").addEventListener("change", (e) => {
-      if (e.target.files[0]) importJsonFile(e.target.files[0]);
-      e.target.value = "";
+    document.getElementById("btn-export-mapstring").addEventListener("click", () => {
+      const str = serializeMapString();
+      const btn = document.getElementById("btn-export-mapstring");
+      const original = btn.textContent;
+      const showCopied = () => {
+        btn.textContent = "✅ Copied!";
+        setTimeout(() => { btn.textContent = original; }, 1500);
+      };
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(str).then(showCopied, () => window.prompt("Copy this map string:", str));
+      } else {
+        window.prompt("Copy this map string:", str);
+      }
+    });
+    document.getElementById("btn-import-mapstring").addEventListener("click", () => {
+      const str = window.prompt("Paste a map string:");
+      if (str) parseMapString(str);
     });
 
     let saved = null;

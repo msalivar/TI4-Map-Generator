@@ -18,13 +18,11 @@
         <button id="btn-randomize">🎲 Randomize…</button>
         <button id="btn-clear">🗑️ Clear board</button>
         <button id="btn-export-png">🖼️ Export PNG</button>
-        <button id="btn-export-json">💾 Export JSON</button>
-        <label class="file-btn">
-          📂 Import JSON
-          <input type="file" id="input-import-json" accept="application/json" hidden />
-        </label>
+        <button id="btn-export-mapstring">📋 Export Map String</button>
+        <button id="btn-import-mapstring">📥 Import Map String</button>
       </div>
       <div class="board-scroll">
+        <div class="board-stats" id="board-stats"></div>
         <svg id="board-svg" xmlns="http://www.w3.org/2000/svg"></svg>
       </div>
     </section>

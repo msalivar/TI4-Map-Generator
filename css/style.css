@@ -102,6 +102,7 @@ button:hover, .file-btn:hover {
 .file-btn { display: inline-flex; align-items: center; }
 
 .board-scroll {
+  position: relative;
   flex: 1 1 auto;
   min-height: 0;
   display: flex;
@@ -111,6 +112,39 @@ button:hover, .file-btn:hover {
   border: 1px solid var(--border);
   border-radius: 10px;
   background: #060810;
+}
+
+.board-stats {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  z-index: 10;
+  background: rgba(6, 8, 16, 0.85);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 6px 10px;
+  font-size: 0.72rem;
+  color: var(--text-dim);
+  line-height: 1.6;
+  pointer-events: none;
+}
+.stats-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
+}
+.stats-swatch {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+  flex: 0 0 auto;
+}
+.stats-num {
+  color: var(--text);
+  font-weight: 700;
+  margin-right: 3px;
 }
 
 #board-svg {
