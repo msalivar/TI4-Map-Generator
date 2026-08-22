@@ -383,11 +383,22 @@
       });
     }
 
+    // Priority order matters: a tile matching more than one category (e.g.
+    // legendary and wormhole) is claimed by whichever category runs first
+    // and is then unavailable to a later one, even if that later count was
+    // reported as achievable by updateRandomizeBounds (which counts each
+    // category independently). No current tile is in more than one of
+    // these categories, but a future tile set could change that.
     takeRandom(available.filter((t) => t.planets.some((p) => p.legendary)), opts.legendaryMin);
     takeRandom(available.filter((t) => t.anomalies.includes("entropicScar")), opts.entropicScarCount);
     takeRandom(available.filter((t) => t.wormholes.length > 0), opts.wormholeCount);
 
     const remaining = n - selected.length;
+    // Wormhole/entropic-scar tiles are excluded here on purpose: those two
+    // counts are exact targets, so any tile of those kinds not already
+    // claimed above must NOT be swept up by the ratio fill below. Legendary
+    // tiles are deliberately left eligible — legendaryMin is a floor, not
+    // an exact target, so extra legendaries turning up here is fine.
     const rest = shuffle(
       available.filter((t) => !used.has(poolKey(t)) && t.wormholes.length === 0 && !t.anomalies.includes("entropicScar"))
     );
