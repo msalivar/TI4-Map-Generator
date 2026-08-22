@@ -31,14 +31,9 @@
     { dx: 32, dy: -30 },
     { dx: -32, dy: -30 },
   ];
-  const ASTEROID_DOTS = [
-    { dx: -20, dy: -18, r: 3 }, { dx: -6, dy: -26, r: 2.5 }, { dx: 14, dy: -20, r: 3.5 },
-    { dx: 24, dy: -4, r: 2.5 }, { dx: 18, dy: 14, r: 3 }, { dx: 0, dy: 22, r: 2.5 },
-    { dx: -18, dy: 12, r: 3 }, { dx: -26, dy: -2, r: 2.5 }, { dx: 4, dy: 2, r: 2 },
-  ];
-  const NEBULA_BLOBS = [
-    { dx: -10, dy: -8, r: 20 }, { dx: 12, dy: 6, r: 16 }, { dx: -4, dy: 16, r: 14 },
-  ];
+  const PIXEL_CELL = 8;
+  const PIXEL_COLS = 17;
+  const PIXEL_ROWS = 15;
 
   function poolKey(tile) {
     return `${tile.set}-${tile.back}-${tile.id}`;
@@ -108,6 +103,12 @@
     const vb = computeViewBox();
     svg.setAttribute("viewBox", `${vb.minX} ${vb.minY} ${vb.w} ${vb.h}`);
 
+    const defs = svgEl("defs", {});
+    const clipPath = svgEl("clipPath", { id: "hex-clip" });
+    clipPath.appendChild(svgEl("polygon", { points: hexPolygonPoints(0, 0) }));
+    defs.appendChild(clipPath);
+    svg.appendChild(defs);
+
     cells.forEach((c) => {
       const key = keyFor(c.q, c.r);
       const { x, y } = axialToPixel(c.q, c.r);
@@ -171,7 +172,7 @@
     g.appendChild(num);
 
     if (tile.planets.length) {
-      drawPlanetCluster(g, x, y - 4, tile.planets);
+      drawPlanetCluster(g, x, y, tile.planets);
     }
 
     tile.wormholes.forEach((w, i) => {
@@ -186,58 +187,69 @@
       .join(" ");
   }
 
+  const LEGENDARY_SCALE = 1.25;
+
   function drawPlanetCluster(g, cx, cy, planets) {
     const count = planets.length;
-    const spacing = count === 1 ? 0 : count === 2 ? 24 : 28;
-    const radius = count === 1 ? 15 : count === 2 ? 12 : 9;
+    const spacing = count === 1 ? 0 : count === 2 ? 34 : 28;
+    const radius = count === 1 ? 20 : count === 2 ? 15 : 11;
     planets.forEach((p, i) => {
       const offset = (i - (count - 1) / 2) * spacing;
       drawPlanet(g, cx + offset, cy, radius, p);
     });
   }
 
-  function drawPlanet(g, cx, cy, r, planet) {
+  function drawPlanet(g, cx, cy, baseRadius, planet) {
+    const r = planet.legendary ? baseRadius * LEGENDARY_SCALE : baseRadius;
     const fill = TRAIT_COLORS[planet.trait] || "#5a6580";
-    const circle = svgEl("circle", {
+    g.appendChild(svgEl("circle", {
       cx, cy, r, fill,
       stroke: planet.legendary ? "#ffd76a" : "#0b0e17",
       "stroke-width": planet.legendary ? 2.5 : 1,
-    });
-    g.appendChild(circle);
+    }));
 
     if (planet.legendary) {
       const badgeSize = r * 1.1;
-      const badge = svgEl("image", {
+      g.appendChild(svgEl("image", {
         href: LEGENDARY_BADGE_DATA_URI,
         x: cx - badgeSize / 2,
         y: cy - r - badgeSize + 4,
         width: badgeSize,
         height: badgeSize,
-      });
-      g.appendChild(badge);
+      }));
     } else if (planet.tech) {
-      const tri = svgEl("polygon", {
+      g.appendChild(svgEl("polygon", {
         points: trianglePoints(cx, cy - r - 6, 5),
         fill: TECH_COLORS[planet.tech] || "#9aa4c0",
-      });
-      g.appendChild(tri);
+      }));
     }
 
-    const badgeY = cy + r + 7;
-    const resBadge = svgEl("circle", { cx: cx - 8, cy: badgeY, r: 6.5, fill: "#3fa34d" });
-    g.appendChild(resBadge);
-    const resText = svgEl("text", { x: cx - 8, y: badgeY + 2.5, class: "planet-badge-text" });
+    // Resource/influence badges overlap the lower-inside portion of the
+    // main circle, rather than sitting below it, so the numbers read as
+    // part of the planet rather than a separate caption.
+    const subR = Math.max(6, r * 0.38);
+    const subOffsetX = r * 0.45;
+    const subY = cy + r * 0.32;
+
+    g.appendChild(svgEl("circle", { cx: cx - subOffsetX, cy: subY, r: subR, fill: "#3fa34d" }));
+    const resText = svgEl("text", { x: cx - subOffsetX, y: subY + subR * 0.35, class: "planet-badge-text" });
     resText.textContent = planet.resources;
     g.appendChild(resText);
 
-    const infBadge = svgEl("circle", { cx: cx + 8, cy: badgeY, r: 6.5, fill: "#4d7bd1" });
-    g.appendChild(infBadge);
-    const infText = svgEl("text", { x: cx + 8, y: badgeY + 2.5, class: "planet-badge-text" });
+    g.appendChild(svgEl("circle", { cx: cx + subOffsetX, cy: subY, r: subR, fill: "#4d7bd1" }));
+    const infText = svgEl("text", { x: cx + subOffsetX, y: subY + subR * 0.35, class: "planet-badge-text" });
     infText.textContent = planet.influence;
     g.appendChild(infText);
 
-    const nameText = svgEl("text", { x: cx, y: badgeY + 15, class: "planet-name" });
-    nameText.textContent = truncate(planet.name, 10);
+    const nameStr = truncate(planet.name, 10);
+    const nameY = cy + r + 11;
+    const boxWidth = Math.min(Math.max(24, nameStr.length * 4.3 + 6), r * 3.4);
+    g.appendChild(svgEl("rect", {
+      x: cx - boxWidth / 2, y: nameY - 6.5, width: boxWidth, height: 9, rx: 2,
+      fill: "#0b0e17", opacity: 0.82,
+    }));
+    const nameText = svgEl("text", { x: cx, y: nameY, class: "planet-name" });
+    nameText.textContent = nameStr;
     g.appendChild(nameText);
   }
 
@@ -250,49 +262,104 @@
     g.appendChild(label);
   }
 
-  function drawSupernova(g, x, y) {
-    g.appendChild(svgEl("circle", { cx: x, cy: y, r: 34, fill: "#ff7a3c", opacity: 0.18 }));
-    g.appendChild(svgEl("circle", { cx: x, cy: y, r: 22, fill: "#ff9a4a", opacity: 0.35 }));
-    g.appendChild(svgEl("circle", { cx: x, cy: y, r: 11, fill: "#ffe08a", opacity: 0.85 }));
-  }
-
-  function drawAsteroidField(g, x, y) {
-    ASTEROID_DOTS.forEach((d) => {
-      g.appendChild(svgEl("circle", { cx: x + d.dx, cy: y + d.dy, r: d.r, fill: "#9aa4c0", opacity: 0.55 }));
+  // Anomaly backgrounds are drawn as a grid of square "pixels" covering the
+  // whole hex, clipped to the hex shape (see the shared #hex-clip def in
+  // renderBoard). Each drawer receives a <g> already translated to the
+  // tile's center, so it draws in tile-relative (0,0) coordinates.
+  function pixelRect(px, py, color, opacity) {
+    return svgEl("rect", {
+      x: px - PIXEL_CELL / 2, y: py - PIXEL_CELL / 2,
+      width: PIXEL_CELL, height: PIXEL_CELL,
+      fill: color, opacity: opacity == null ? 1 : opacity,
     });
   }
 
-  function drawNebula(g, x, y) {
-    NEBULA_BLOBS.forEach((b) => {
-      g.appendChild(svgEl("circle", { cx: x + b.dx, cy: y + b.dy, r: b.r, fill: "#b06fd6", opacity: 0.22 }));
+  function forEachPixelCell(callback) {
+    for (let row = 0; row < PIXEL_ROWS; row++) {
+      for (let col = 0; col < PIXEL_COLS; col++) {
+        const px = (col - (PIXEL_COLS - 1) / 2) * PIXEL_CELL;
+        const py = (row - (PIXEL_ROWS - 1) / 2) * PIXEL_CELL;
+        callback(px, py, col, row);
+      }
+    }
+  }
+
+  function drawSupernovaPixels(g) {
+    forEachPixelCell((px, py) => {
+      const dist = Math.hypot(px, py);
+      const angle = Math.atan2(py, px);
+      const rayBoost = Math.pow(Math.abs(Math.cos(angle * 4)), 8) * 26;
+      const edge = 30 + rayBoost;
+      if (dist > edge) return;
+      const color = dist < 10 ? "#fff2b8" : dist < 22 ? "#ffb347" : "#c0392b";
+      g.appendChild(pixelRect(px, py, color, 0.88));
     });
   }
 
-  function drawGravityRift(g, x, y) {
-    g.appendChild(svgEl("circle", { cx: x, cy: y, r: 24, fill: "#0a0a12", opacity: 0.9 }));
-    g.appendChild(svgEl("circle", { cx: x, cy: y, r: 24, fill: "none", stroke: "#b98bff", "stroke-width": 3, opacity: 0.8 }));
+  function drawAsteroidFieldPixels(g) {
+    forEachPixelCell((px, py, col, row) => {
+      const hash = (col * 13 + row * 7 + col * row * 3) % 11;
+      if (hash > 2) return;
+      const shade = hash === 0 ? "#b8bfd4" : hash === 1 ? "#7d8497" : "#565d70";
+      g.appendChild(pixelRect(px, py, shade, 0.8));
+    });
   }
 
-  function drawEntropicScar(g, x, y) {
-    g.appendChild(svgEl("circle", { cx: x, cy: y, r: 24, fill: "#170826", opacity: 0.9 }));
-    g.appendChild(svgEl("circle", {
-      cx: x, cy: y, r: 24, fill: "none", stroke: "#e04dff", "stroke-width": 2.5, "stroke-dasharray": "5 4", opacity: 0.9,
-    }));
+  function drawNebulaPixels(g) {
+    forEachPixelCell((px, py) => {
+      const wave = Math.sin(px * 0.09 + py * 0.05) + Math.cos(py * 0.11 - px * 0.03);
+      if (wave < 0.15) return;
+      const color = wave > 1.1 ? "#f0a6e0" : wave > 0.6 ? "#b06fd6" : "#6a4fb0";
+      g.appendChild(pixelRect(px, py, color, 0.45));
+    });
+  }
+
+  function drawGravityRiftPixels(g) {
+    forEachPixelCell((px, py) => {
+      const dist = Math.hypot(px, py);
+      const angle = Math.atan2(py, px);
+      const spiral = ((angle + dist * 0.14) % (Math.PI / 2) + Math.PI / 2) % (Math.PI / 2);
+      if (dist < 10) {
+        g.appendChild(pixelRect(px, py, "#050208", 0.95));
+      } else if (dist < 46 && spiral > 0.9 && spiral < 1.6) {
+        g.appendChild(pixelRect(px, py, "#b98bff", 0.7));
+      } else if (dist < 46) {
+        g.appendChild(pixelRect(px, py, "#0a0a12", 0.5));
+      }
+    });
+  }
+
+  function drawEntropicScarPixels(g) {
+    const spikes = [0, 0.7, 1.4, 2.1, 2.8, 3.5, 4.2, 4.9, 5.6];
+    forEachPixelCell((px, py) => {
+      const dist = Math.hypot(px, py);
+      const angle = Math.atan2(py, px) + Math.PI;
+      let radiusHere = 26;
+      for (const s of spikes) {
+        const d = Math.abs(((angle - s + Math.PI) % (2 * Math.PI)) - Math.PI);
+        if (d < 0.3) radiusHere = 40;
+      }
+      if (dist > radiusHere) return;
+      const color = dist > radiusHere - 6 ? "#e04dff" : "#170826";
+      g.appendChild(pixelRect(px, py, color, dist > radiusHere - 6 ? 0.75 : 0.9));
+    });
   }
 
   const ANOMALY_DRAWERS = {
-    supernova: drawSupernova,
-    asteroid: drawAsteroidField,
-    nebula: drawNebula,
-    rift: drawGravityRift,
-    entropicScar: drawEntropicScar,
+    supernova: drawSupernovaPixels,
+    asteroid: drawAsteroidFieldPixels,
+    nebula: drawNebulaPixels,
+    rift: drawGravityRiftPixels,
+    entropicScar: drawEntropicScarPixels,
   };
 
   function drawAnomalyBackground(g, x, y, anomalies) {
+    const wrapper = svgEl("g", { transform: `translate(${x},${y})`, "clip-path": "url(#hex-clip)" });
     anomalies.forEach((type) => {
       const drawer = ANOMALY_DRAWERS[type];
-      if (drawer) drawer(g, x, y);
+      if (drawer) drawer(wrapper);
     });
+    g.appendChild(wrapper);
   }
 
   function truncate(s, n) {
@@ -539,14 +606,10 @@
     const blueNeeded = Math.max(0, opts.blueCount - blueSoFar);
     const redNeeded = Math.max(0, opts.redCount - redSoFar);
 
-    // Wormhole/entropic-scar tiles are excluded here on purpose: those two
-    // counts are exact targets, so any tile of those kinds not already
-    // claimed above must NOT be swept up by the ratio fill below. Legendary
-    // tiles are deliberately left eligible — legendaryMin is a floor, not
-    // an exact target, so extra legendaries turning up here is fine.
-    const rest = shuffle(
-      available.filter((t) => !used.has(poolKey(t)) && t.wormholes.length === 0 && !t.anomalies.includes("entropicScar"))
-    );
+    // Legendary minimum, Entropic Scar count, and wormhole count are all
+    // minimums, not exact targets — so the ratio-fill below is free to pick
+    // up extra tiles of those kinds too. Nothing needs excluding here.
+    const rest = shuffle(available.filter((t) => !used.has(poolKey(t))));
     const blues = rest.filter((t) => t.back === "blue");
     const reds = rest.filter((t) => t.back === "red");
     const takeBlue = Math.min(blueNeeded, blues.length);
