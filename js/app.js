@@ -1044,17 +1044,19 @@
     const serializer = new XMLSerializer();
     const svgClone = svg.cloneNode(true);
     svgClone.setAttribute("xmlns", "http://www.w3.org/2000/svg");
+    // The live <svg> only has width/height:100% via CSS, which isn't
+    // available to a standalone image loaded from a blob URL -- without
+    // explicit width/height attributes here, browsers fall back to the
+    // default replaced-element size (300x150) instead of the viewBox,
+    // silently cropping the exported PNG to a corner of the map.
+    const [vbX, vbY, vbW, vbH] = svg.getAttribute("viewBox").split(" ");
+    svgClone.setAttribute("width", vbW);
+    svgClone.setAttribute("height", vbH);
     const styleEl = document.createElementNS("http://www.w3.org/2000/svg", "style");
     styleEl.textContent = EXPORT_STYLE;
     svgClone.insertBefore(styleEl, svgClone.firstChild);
     // Inline a background so the exported PNG isn't transparent.
-    const bg = svgEl("rect", {
-      x: svg.getAttribute("viewBox").split(" ")[0],
-      y: svg.getAttribute("viewBox").split(" ")[1],
-      width: svg.getAttribute("viewBox").split(" ")[2],
-      height: svg.getAttribute("viewBox").split(" ")[3],
-      fill: "#060810",
-    });
+    const bg = svgEl("rect", { x: vbX, y: vbY, width: vbW, height: vbH, fill: "#060810" });
     svgClone.insertBefore(bg, svgClone.firstChild);
     const svgStr = serializer.serializeToString(svgClone);
     const svgBlob = new Blob([svgStr], { type: "image/svg+xml;charset=utf-8" });
