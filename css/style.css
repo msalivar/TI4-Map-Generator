@@ -37,7 +37,7 @@ body {
   flex: 1 1 auto;
   min-height: 0;
   display: grid;
-  grid-template-columns: 1fr 240px;
+  grid-template-columns: 1fr 300px;
   gap: 10px;
   padding: 10px 12px;
   align-items: stretch;
@@ -269,7 +269,7 @@ button:hover, .file-btn:hover {
 }
 .palette-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(124px, 1fr));
   gap: 6px;
 }
 .palette-tile {
