@@ -210,22 +210,20 @@
     g.appendChild(sub);
   }
 
-  function drawTile(g, x, y, tile, backClass, key, removable) {
+  // Draws everything about a tile's appearance (hex fill, anomaly art, id
+  // label, planets, wormholes) with no interactivity attached, so the exact
+  // same visual can be reused both for a placed board tile and for its
+  // palette swatch. `clipId` must be unique per <svg> the caller draws
+  // into, since clip-path ids are looked up document-wide, not per-<svg>.
+  function buildTileVisual(g, x, y, tile, backClass, clipId) {
     const isAnomaly = tile.anomalies.length > 0;
     const poly = svgEl("polygon", {
       points: hexPolygonPoints(x, y),
       class: `hex ${backClass}` + (isAnomaly ? " anomaly-tile" : ""),
-      "data-key": key,
     });
-    if (removable) {
-      poly.addEventListener("click", () => onFilledClick(key));
-      poly.addEventListener("pointerdown", (e) => startTileDrag(e, poly, key));
-    }
-    poly.addEventListener("mousemove", (e) => showTooltip(e, tile));
-    poly.addEventListener("mouseleave", hideTooltip);
     g.appendChild(poly);
 
-    if (isAnomaly) drawAnomalyBackground(g, x, y, tile.anomalies);
+    if (isAnomaly) drawAnomalyBackground(g, x, y, tile.anomalies, clipId);
 
     const num = svgEl("text", { x, y: y - 40, class: "hex-label hex-id-label" });
     num.textContent = tile.type === "mecatol" ? "Mecatol Rex" : `#${tile.id}`;
@@ -239,6 +237,19 @@
       const slot = WORMHOLE_ICON_SLOTS[i] || WORMHOLE_ICON_SLOTS[WORMHOLE_ICON_SLOTS.length - 1];
       drawWormholeIcon(g, x + slot.dx, y + slot.dy, w);
     });
+
+    return poly;
+  }
+
+  function drawTile(g, x, y, tile, backClass, key, removable) {
+    const poly = buildTileVisual(g, x, y, tile, backClass, "hex-clip");
+    poly.setAttribute("data-key", key);
+    if (removable) {
+      poly.addEventListener("click", () => onFilledClick(key));
+      poly.addEventListener("pointerdown", (e) => startTileDrag(e, poly, key));
+    }
+    poly.addEventListener("mousemove", (e) => showTooltip(e, tile));
+    poly.addEventListener("mouseleave", hideTooltip);
   }
 
   const LEGENDARY_SCALE = 1.25;
@@ -544,13 +555,13 @@
     entropicScar: drawEntropicScarPixels,
   };
 
-  function drawAnomalyBackground(g, x, y, anomalies) {
+  function drawAnomalyBackground(g, x, y, anomalies, clipId) {
     // pointer-events: none so hovering the pixel art doesn't block the
     // hex polygon's own mousemove/mouseleave listeners underneath (the art
     // is drawn on top of the polygon, but as a DOM sibling, not a child,
     // so those events wouldn't otherwise reach the polygon's tooltip).
     const wrapper = svgEl("g", {
-      transform: `translate(${x},${y})`, "clip-path": "url(#hex-clip)", "pointer-events": "none",
+      transform: `translate(${x},${y})`, "clip-path": `url(#${clipId})`, "pointer-events": "none",
     });
     anomalies.forEach((type) => {
       const drawer = ANOMALY_DRAWERS[type];
@@ -685,30 +696,42 @@
     document.addEventListener("pointerup", onUp, { once: true });
   }
 
+  // Bounding box of a single hex centered at (0,0): HEX_SIZE=62 corner-to-
+  // corner horizontally, HEX_SIZE*sqrt(3) flat-to-flat vertically, with a
+  // small margin. Matches the actual hex shape used on the board, just at
+  // swatch scale, so the palette shows the exact same tile art.
+  const PALETTE_VIEWBOX = "-66 -58 132 116";
+
   function renderPalette() {
     paletteBlue.innerHTML = "";
     paletteRed.innerHTML = "";
     visiblePoolTiles()
       .sort((a, b) => a.id - b.id)
       .forEach((tile) => {
+        const key = poolKey(tile);
         const div = document.createElement("div");
-        div.className = "palette-tile" + (tile.back === "red" ? " red" : "") + (poolKey(tile) === selectedPoolKey ? " selected" : "");
-        div.innerHTML = `<div class="tnum">#${tile.id}</div><div>${tile.planets.length || "—"}</div>`;
-        div.title = tooltipText(tile);
+        div.className = "palette-tile" + (tile.back === "red" ? " red" : "") + (key === selectedPoolKey ? " selected" : "");
         div.addEventListener("click", () => {
-          selectedPoolKey = poolKey(tile) === selectedPoolKey ? null : poolKey(tile);
+          selectedPoolKey = key === selectedPoolKey ? null : key;
           renderAll();
         });
+
+        const tileSvg = svgEl("svg", { viewBox: PALETTE_VIEWBOX, class: "palette-tile-svg" });
+        const clipId = `hex-clip-pal-${key.replace(/[^a-zA-Z0-9_-]/g, "_")}`;
+        const defs = svgEl("defs", {});
+        const clipPath = svgEl("clipPath", { id: clipId });
+        clipPath.appendChild(svgEl("polygon", { points: hexPolygonPoints(0, 0) }));
+        defs.appendChild(clipPath);
+        tileSvg.appendChild(defs);
+        const g = svgEl("g", {});
+        tileSvg.appendChild(g);
+        const poly = buildTileVisual(g, 0, 0, tile, tile.back, clipId);
+        poly.addEventListener("mousemove", (e) => showTooltip(e, tile));
+        poly.addEventListener("mouseleave", hideTooltip);
+        div.appendChild(tileSvg);
+
         (tile.back === "red" ? paletteRed : paletteBlue).appendChild(div);
       });
-  }
-
-  function tooltipText(tile) {
-    const parts = [`Tile #${tile.id}`];
-    tile.planets.forEach((p) => parts.push(`${p.name} ${p.resources}/${p.influence}${p.station ? " (Station)" : ""}`));
-    tile.wormholes.forEach((w) => parts.push(WORMHOLE_LABELS[w]));
-    tile.anomalies.forEach((a) => parts.push(ANOMALY_LABELS[a]));
-    return parts.join(" | ");
   }
 
   function renderAll() {
