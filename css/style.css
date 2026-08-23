@@ -33,22 +33,6 @@ body {
   flex-direction: column;
 }
 
-.topbar {
-  flex: 0 0 auto;
-  padding: 8px 16px 4px;
-  border-bottom: 1px solid var(--border);
-}
-.topbar h1 {
-  margin: 0;
-  font-size: 1.2rem;
-  letter-spacing: 0.5px;
-}
-.subtitle {
-  margin: 2px 0 6px;
-  color: var(--text-dim);
-  font-size: 0.75rem;
-}
-
 .layout {
   flex: 1 1 auto;
   min-height: 0;
@@ -81,8 +65,18 @@ body {
   flex: 0 0 auto;
   display: flex;
   flex-wrap: wrap;
+  align-items: center;
   gap: 6px;
   margin-bottom: 6px;
+}
+.toolbar-title {
+  margin: 0 10px 0 0;
+  padding-right: 10px;
+  border-right: 1px solid var(--border);
+  font-size: 1rem;
+  letter-spacing: 0.5px;
+  white-space: nowrap;
+  flex: 0 0 auto;
 }
 
 button, .file-btn {
