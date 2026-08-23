@@ -228,6 +228,26 @@ button:hover, .file-btn:hover {
   stroke-width: 2.5px;
   stroke-linejoin: round;
 }
+.lock-toggle {
+  cursor: pointer;
+  opacity: 0.45;
+}
+.lock-toggle:hover, .lock-toggle.locked {
+  opacity: 1;
+}
+.lock-toggle-bg {
+  fill: #0b0e17;
+  stroke: var(--border);
+  stroke-width: 1;
+}
+.lock-toggle.locked .lock-toggle-bg {
+  stroke: var(--accent-2);
+}
+.lock-toggle-icon {
+  font-size: 11px;
+  text-anchor: middle;
+  user-select: none;
+}
 
 .palette-panel {
   position: relative;

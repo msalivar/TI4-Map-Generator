@@ -15,6 +15,8 @@
   /** pool of tiles not yet placed, keyed by pool-id */
   let pool = new Map(TILE_POOL.map((t) => [poolKey(t), t]));
   let selectedPoolKey = null;
+  /** keys of board tiles the user has locked against click-remove/drag/shuffle */
+  let lockedKeys = new Set();
   let playerNames = ["Player 1", "Player 2", "Player 3", "Player 4", "Player 5", "Player 6"];
   const TILE_SETS = [
     { key: "pok", label: "Prophecy of Kings" },
@@ -244,12 +246,38 @@
   function drawTile(g, x, y, tile, backClass, key, removable) {
     const poly = buildTileVisual(g, x, y, tile, backClass, "hex-clip");
     poly.setAttribute("data-key", key);
-    if (removable) {
+    const locked = removable && lockedKeys.has(key);
+    if (removable && !locked) {
       poly.addEventListener("click", () => onFilledClick(key));
       poly.addEventListener("pointerdown", (e) => startTileDrag(e, poly, key));
     }
     poly.addEventListener("mousemove", (e) => showTooltip(e, tile));
     poly.addEventListener("mouseleave", hideTooltip);
+
+    // Only real placed tiles can be locked -- not Mecatol Rex (removable
+    // is false for it) and not the palette swatches (which never call
+    // drawTile at all, only the shared buildTileVisual).
+    if (removable) drawLockToggle(g, x, y, key, locked);
+  }
+
+  // Bottom-center, mirroring the id label's top-center spot: the hex's flat
+  // bottom edge (unlike its pointed left/right corners) gives a full-width
+  // safe strip that doesn't clip the icon regardless of planet layout.
+  const LOCK_ICON_OFFSET = { dx: 0, dy: 36 };
+
+  function drawLockToggle(g, x, y, key, locked) {
+    const cx = x + LOCK_ICON_OFFSET.dx;
+    const cy = y + LOCK_ICON_OFFSET.dy;
+    const btn = svgEl("g", { class: "lock-toggle" + (locked ? " locked" : "") });
+    btn.appendChild(svgEl("circle", { cx, cy, r: 9, class: "lock-toggle-bg" }));
+    const icon = svgEl("text", { x: cx, y: cy + 4, class: "lock-toggle-icon" });
+    icon.textContent = locked ? "🔒" : "🔓";
+    btn.appendChild(icon);
+    btn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      toggleLock(key);
+    });
+    g.appendChild(btn);
   }
 
   const LEGENDARY_SCALE = 1.25;
@@ -616,6 +644,7 @@
   }
 
   function onFilledClick(key) {
+    if (lockedKeys.has(key)) return;
     const tile = board.get(key);
     if (!tile) return;
     board.delete(key);
@@ -627,9 +656,27 @@
   function isValidDropTarget(targetKey, sourceKey) {
     if (!targetKey || targetKey === sourceKey) return false;
     if (homeKeys.has(targetKey)) return false;
+    if (lockedKeys.has(targetKey)) return false;
     const cell = keyToCell.get(targetKey);
     if (!cell || cell.ring === 0) return false;
     return true;
+  }
+
+  function toggleLock(key) {
+    if (lockedKeys.has(key)) lockedKeys.delete(key);
+    else lockedKeys.add(key);
+    persist();
+    renderAll();
+  }
+
+  function shuffleUnlocked() {
+    const entries = [...board.entries()].filter(([key]) => !lockedKeys.has(key));
+    if (entries.length < 2) return;
+    const shuffledTiles = shuffle(entries.map(([, tile]) => tile));
+    entries.forEach(([key], i) => board.set(key, shuffledTiles[i]));
+    selectedPoolKey = null;
+    persist();
+    renderAll();
   }
 
   function moveOrSwapTile(sourceKey, targetKey) {
@@ -912,6 +959,7 @@
     board.forEach((tile) => pool.set(poolKey(tile), tile));
     board = new Map();
     selectedPoolKey = null;
+    lockedKeys = new Set();
     persist();
     renderAll();
   }
@@ -922,6 +970,7 @@
       rings: RINGS,
       playerNames,
       enabledSets: [...enabledSets],
+      lockedKeys: [...lockedKeys],
       placements: [...board.entries()].map(([key, tile]) => ({ key, tileId: tile.id, back: tile.back, name: tile.name })),
     };
   }
@@ -947,6 +996,7 @@
         board.set(p.key, match);
       }
     });
+    lockedKeys = new Set(Array.isArray(data.lockedKeys) ? data.lockedKeys.filter((k) => board.has(k)) : []);
     selectedPoolKey = null;
     renderTileSetToggles();
     renderAll();
@@ -1014,6 +1064,7 @@
     board = newBoard;
     pool = new Map(TILE_POOL.filter((t) => !usedKeys.has(poolKey(t))).map((t) => [poolKey(t), t]));
     selectedPoolKey = null;
+    lockedKeys = new Set();
     persist();
     renderAll();
   }
@@ -1117,6 +1168,7 @@
       btnTogglePalette.title = collapsed ? "Expand tile selector" : "Collapse tile selector";
     });
 
+    document.getElementById("btn-shuffle-unlocked").addEventListener("click", shuffleUnlocked);
     document.getElementById("btn-clear").addEventListener("click", clearBoard);
     document.getElementById("btn-export-png").addEventListener("click", exportPng);
     document.getElementById("btn-export-mapstring").addEventListener("click", () => {
