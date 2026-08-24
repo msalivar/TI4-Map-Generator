@@ -38,9 +38,9 @@ data/tiles-data.js      → data/legendary-badge.js → data/tech-icons.js → j
 
 Every tile in `TILE_POOL` (built by `buildTilePool()`/`addPoolTile()` in `tiles-data.js`) has: `id`, `type`, `back` (`"blue"|"red"|"none"`), `set`, `name`, `planets[]`, `wormholes[]`, `anomalies[]` (the latter two are arrays — several real tiles carry more than one). Each planet (via `makePlanet(name, resources, influence, trait, tech, legendary, station)`) has `trait` (`cultural|industrial|hazardous`), `tech` (`warfare|propulsion|biotic|cybernetic`), `legendary`, and `station` booleans.
 
-Four tile sets, each a separate array merged by `buildTilePool()`: `NAMED_BLUE_TILES`/`WORMHOLE_TILES`/`RED_TILES` (base game — intentionally placeholder/fictional data per the file's own header, meant to be hand-edited to match a physical set), and `POK_TILES`/`THUNDERS_EDGE_TILES`/`DISCORDANT_STARS_TILES` (real, wiki-sourced data — each array's comment documents its source and what's deliberately excluded, e.g. faction home systems and hyperlane tiles, which don't fit this tool's generic-home-slot model).
+Four tile sets, each a separate array merged by `buildTilePool()`: `NAMED_BLUE_TILES`/`WORMHOLE_TILES`/`RED_TILES` (base game) and `POK_TILES`/`THUNDERS_EDGE_TILES`/`DISCORDANT_STARS_TILES` — all six are real, wiki-sourced data; each array's comment documents its specific source and what's deliberately excluded, e.g. faction home systems and hyperlane tiles, which don't fit this tool's generic-home-slot model.
 
-**Tile `id` is not globally unique** — it's only unique combined with `set` and `back` (ids coincidentally collide across sets, e.g. base and PoK both have an id 67 and 68). `poolKey(tile)` is `${set}-${back}-${id}` for exactly this reason; don't shorten it.
+**Tile `id` is not globally unique across sets in general** — real tile numbers do reset per expansion (Discordant Stars in particular assigns its own numbering independent of the official range), so `poolKey(tile)` is `${set}-${back}-${id}`, not just `id`; don't shorten it.
 
 ### `js/app.js` internals
 

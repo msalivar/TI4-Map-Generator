@@ -2,22 +2,21 @@
  * TI4 Map Generator — system tile data
  * -------------------------------------------------------------
  * IMPORTANT — DATA ACCURACY:
- * This starter set uses PLACEHOLDER resource/influence numbers and
- * generic system names for most tiles. Only a few facts here are
- * pulled from the real rulebook (Mecatol Rex's 1 resource / 6
- * influence, the wormhole types Alpha/Beta/Gamma/Delta, and the
- * anomaly types Nebula/Supernova/Asteroid Field/Gravity Rift).
+ * All tile arrays here are real, wiki-sourced data (name, tile number,
+ * resources, influence, trait, tech specialty, wormhole, anomaly),
+ * cross-checked between the wiki's Tiles List page (tile numbers and
+ * which planets share a tile) and its Planets page (per-planet trait/
+ * resources/influence/tech, read from each cell's icon alt text).
+ * Every array excludes faction home systems, the Creuss/Muaat special
+ * tiles, hyperlane tiles, and other tiles that don't fit this tool's
+ * generic-home-slot model -- see the comment above each array for its
+ * specific sourcing and exclusions.
  *
- * To make this match your physical tile set exactly, just edit the
- * arrays below — look at the tile number printed on each physical
- * tile and copy its real planets/resources/influence/wormhole/
- * anomaly here. Nothing else in the app needs to change.
- *
- * The base-game placeholder set described above is NAMED_BLUE_TILES/
- * WORMHOLE_TILES/RED_TILES. POK_TILES/THUNDERS_EDGE_TILES/
- * DISCORDANT_STARS_TILES below them are real, wiki-sourced data —
- * see the comment above each array for its specific sourcing and
- * exclusions.
+ * If your physical set differs from a published tile (rare, but
+ * expansions do get errata'd), just edit the relevant entry below —
+ * look at the tile number printed on the physical tile and update its
+ * planets/resources/influence/wormhole/anomaly here. Nothing else in
+ * the app needs to change.
  *
  * Twilight Imperium (Fourth Edition) is a trademark of Fantasy
  * Flight Games / Asmodee. This is an unofficial fan-made tool; no
@@ -45,69 +44,55 @@ function makePlanet(name, resources, influence, trait, tech, legendary, station)
   return { name, resources, influence, trait: trait || null, tech: tech || null, legendary: !!legendary, station: !!station };
 }
 
-// A handful of real, well-known named systems (values are close to
-// the published game but should be double-checked against your set).
+// Base-game generic system tiles (real tile numbers 19-38), sourced
+// from the wiki's Planets page (name/trait/resources/influence/tech,
+// via each cell's trait/tech icon alt text) cross-checked against the
+// Tiles List page (tile numbers and which planets share a tile).
+// Real base-game tile numbers only go up to 51 (1-17 are faction home
+// systems and the Creuss gate, 18 is Mecatol Rex, 51 is the Creuss
+// home system) -- faction homes are excluded here for the same reason
+// PoK/Thunder's Edge exclude theirs (see comments below).
 const NAMED_BLUE_TILES = [
-  { id: 19, planets: [makePlanet("Abyz", 0, 2, "industrial")] },
-  { id: 20, planets: [makePlanet("Fria", 2, 0, "hazardous")] },
-  { id: 21, planets: [makePlanet("Arnor", 2, 1, "industrial"), makePlanet("Lor", 1, 2, "cultural")] },
-  { id: 22, planets: [makePlanet("Bereg", 3, 1, "hazardous"), makePlanet("Lirta IV", 2, 3, "hazardous")] },
-  { id: 23, planets: [makePlanet("Arinam", 1, 2, "industrial"), makePlanet("Meer", 0, 4, "hazardous", "warfare")] },
-  { id: 24, planets: [makePlanet("Dal Bootha", 0, 2, "cultural"), makePlanet("Xxehan", 1, 1, "cultural")] },
-  { id: 25, planets: [makePlanet("Corneeq", 1, 2, "cultural"), makePlanet("Resculon", 2, 0, "cultural")] },
-  { id: 26, planets: [makePlanet("Centauri", 1, 3, "cultural")] },
-  { id: 27, planets: [makePlanet("Gral", 1, 1, "industrial", "propulsion")] },
-  { id: 28, planets: [makePlanet("Vega Major", 1, 2, "industrial"), makePlanet("Vega Minor", 1, 2, "cultural", "propulsion")] },
-  { id: 29, planets: [makePlanet("Loki", 1, 2, "cultural")] },
-  { id: 30, planets: [makePlanet("Lisis II", 2, 1, "industrial"), makePlanet("Ragh", 1, 1, "hazardous")] },
-  { id: 31, planets: [makePlanet("Mecatol", 0, 0, null)] },
-  { id: 32, planets: [makePlanet("New Albion", 1, 1, "industrial", "biotic"), makePlanet("Starpoint", 3, 1, "hazardous")] },
-  { id: 33, planets: [makePlanet("Tequ'ran", 2, 0, "hazardous"), makePlanet("Torkan", 0, 3, "cultural")] },
-  { id: 34, planets: [makePlanet("Qucen'n", 3, 1, "industrial")] },
-  { id: 35, planets: [makePlanet("Quinarra", 3, 1, "industrial")] },
-  { id: 36, planets: [makePlanet("Mellon", 0, 3, "cultural")] },
-  { id: 37, planets: [makePlanet("Zohbat", 3, 1, "hazardous")] },
-  { id: 38, planets: [makePlanet("Wellon", 1, 2, "industrial", "cybernetic")] },
-  { id: 39, planets: [makePlanet("Thibah", 1, 1, "industrial", "propulsion")] },
-  { id: 40, planets: [makePlanet("Tar'Mann", 1, 1, "industrial", "biotic")] },
-  { id: 41, planets: [makePlanet("Saudor", 2, 2, "industrial")] },
-  { id: 42, planets: [makePlanet("Mehar Xull", 1, 3, "hazardous", "warfare")] },
-  { id: 43, planets: [makePlanet("Quann", 2, 1, "cultural")] },
-  { id: 44, planets: [makePlanet("Lodor", 0, 3, "cultural")] },
-  { id: 45, planets: [makePlanet("New Albion II", 1, 1, "industrial")] },
-  { id: 46, planets: [makePlanet("Rarron", 0, 2, "cultural")] },
-  { id: 47, planets: [makePlanet("Archon Ren", 2, 3, "hazardous")] },
-  { id: 48, planets: [makePlanet("Archon Vail", 1, 3, "hazardous", "propulsion")] },
-  { id: 49, planets: [makePlanet("Perimeter", 2, 1, "industrial")] },
-  { id: 50, planets: [makePlanet("Ang", 2, 0, "industrial", "warfare")] },
+  { id: 19, planets: [makePlanet("Wellon", 1, 2, "industrial", "cybernetic")] },
+  { id: 20, planets: [makePlanet("Vefut II", 2, 2, "hazardous")] },
+  { id: 21, planets: [makePlanet("Thibah", 1, 1, "industrial", "propulsion")] },
+  { id: 22, planets: [makePlanet("Tar'Mann", 1, 1, "industrial", "biotic")] },
+  { id: 23, planets: [makePlanet("Saudor", 2, 2, "industrial")] },
+  { id: 24, planets: [makePlanet("Mehar Xull", 1, 3, "hazardous", "warfare")] },
+  { id: 27, planets: [makePlanet("New Albion", 1, 1, "industrial", "biotic"), makePlanet("Starpoint", 3, 1, "hazardous")] },
+  { id: 28, planets: [makePlanet("Tequ'ran", 2, 0, "hazardous"), makePlanet("Torkan", 0, 3, "cultural")] },
+  { id: 29, planets: [makePlanet("Qucen'n", 1, 2, "industrial"), makePlanet("Rarron", 0, 3, "cultural")] },
+  { id: 30, planets: [makePlanet("Mellon", 0, 2, "cultural"), makePlanet("Zohbat", 3, 1, "hazardous")] },
+  { id: 31, planets: [makePlanet("Lazar", 1, 0, "industrial", "cybernetic"), makePlanet("Sakulag", 2, 1, "hazardous")] },
+  { id: 32, planets: [makePlanet("Dal Bootha", 0, 2, "cultural"), makePlanet("Xxehan", 1, 1, "cultural")] },
+  { id: 33, planets: [makePlanet("Coorneeq", 1, 2, "cultural"), makePlanet("Resculon", 2, 0, "cultural")] },
+  { id: 34, planets: [makePlanet("Centauri", 1, 3, "cultural"), makePlanet("Gral", 1, 1, "industrial", "propulsion")] },
+  { id: 35, planets: [makePlanet("Bereg", 3, 1, "hazardous"), makePlanet("Lirta IV", 2, 3, "hazardous")] },
+  { id: 36, planets: [makePlanet("Arnor", 2, 1, "industrial"), makePlanet("Lor", 1, 2, "industrial")] },
+  { id: 37, planets: [makePlanet("Arinam", 1, 2, "industrial"), makePlanet("Meer", 0, 4, "hazardous", "warfare")] },
+  { id: 38, planets: [makePlanet("Abyz", 3, 0, "hazardous"), makePlanet("Fria", 2, 0, "hazardous")] },
 ];
 
-// Wormhole tiles (blue-backed, no anomaly)
+// Wormhole tiles (blue-backed, no anomaly) -- real tile numbers 25/26.
 const WORMHOLE_TILES = [
-  { id: 51, planets: [makePlanet("Lisis", 2, 1, "industrial")], wormhole: "alpha" },
-  { id: 52, planets: [makePlanet("Ang II", 0, 2, "industrial")], wormhole: "beta" },
+  { id: 25, planets: [makePlanet("Quann", 2, 1, "cultural")], wormhole: "beta" },
+  { id: 26, planets: [makePlanet("Lodor", 3, 1, "cultural")], wormhole: "alpha" },
 ];
 
-// Red-backed anomaly / wormhole / empty tiles
+// Red-backed anomaly / wormhole / empty tiles -- real tile numbers 39-50.
 const RED_TILES = [
-  { id: 53, planets: [], anomaly: "supernova" },
-  { id: 54, planets: [], anomaly: "asteroid" },
-  { id: 55, planets: [], anomaly: "asteroid" },
-  { id: 56, planets: [], anomaly: "asteroid" },
-  { id: 57, planets: [], anomaly: "nebula" },
-  { id: 58, planets: [], anomaly: "nebula" },
-  { id: 59, planets: [], anomaly: "rift" },
-  { id: 60, planets: [makePlanet("Wren Terra", 2, 1, "industrial")], wormhole: "alpha" },
-  { id: 61, planets: [makePlanet("Res Terra", 1, 1, "hazardous")], wormhole: "beta" },
-  { id: 62, planets: [] },
-  { id: 63, planets: [] },
-  { id: 64, planets: [] },
-  { id: 65, planets: [makePlanet("Cormund", 1, 1, "hazardous")] },
-  { id: 66, planets: [makePlanet("Everra", 3, 1, "cultural")] },
-  { id: 67, planets: [] },
-  { id: 68, planets: [] },
-  { id: 69, planets: [makePlanet("Kraag", 0, 2, "hazardous"), makePlanet("Siig", 1, 1, "hazardous")] },
-  { id: 70, planets: [] },
+  { id: 39, planets: [], wormhole: "alpha" },
+  { id: 40, planets: [], wormhole: "beta" },
+  { id: 41, planets: [], anomaly: "rift" },
+  { id: 42, planets: [], anomaly: "nebula" },
+  { id: 43, planets: [], anomaly: "supernova" },
+  { id: 44, planets: [], anomaly: "asteroid" },
+  { id: 45, planets: [], anomaly: "asteroid" },
+  { id: 46, planets: [] },
+  { id: 47, planets: [] },
+  { id: 48, planets: [] },
+  { id: 49, planets: [] },
+  { id: 50, planets: [] },
 ];
 
 // Prophecy of Kings — generic system tiles only. Faction home systems
