@@ -27,6 +27,19 @@
 
   const TRAIT_COLORS = { cultural: "#3fa34d", industrial: "#4d7bd1", hazardous: "#d9542f" };
   const TECH_SWATCH_COLORS = { warfare: "#e0524f", propulsion: "#4d7bd1", biotic: "#3fa34d", cybernetic: "#e0b93f" };
+  // Order controls how repeated tech-skip letters group on a home tile
+  // (e.g. two Biotic + one Cybernetic renders "GGY", not interleaved).
+  const TECH_ORDER = ["propulsion", "biotic", "cybernetic", "warfare"];
+  const TECH_LETTERS = { propulsion: "B", biotic: "G", cybernetic: "Y", warfare: "R" };
+
+  function techLettersFor(techTypes) {
+    return TECH_ORDER.flatMap((type) => techTypes.filter((t) => t === type).map(() => TECH_LETTERS[type])).join("");
+  }
+
+  function formatScore(n) {
+    const rounded = Math.round(n * 10) / 10;
+    return rounded % 1 === 0 ? String(rounded) : rounded.toFixed(1);
+  }
   const WORMHOLE_COLORS = { alpha: "#e0902f", beta: "#3fa34d", gamma: "#c9576f", delta: "#7a6fd0", epsilon: "#4d7bd1" };
   const WORMHOLE_SYMBOLS = { alpha: "α", beta: "β", gamma: "γ", delta: "δ", epsilon: "ε" };
   const WORMHOLE_ICON_SLOTS = [
