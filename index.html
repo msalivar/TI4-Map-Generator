@@ -40,26 +40,38 @@
         </div>
         <div class="palette-group">
           <h3>Filters</h3>
-          <div class="filter-row">
-            <label class="filter-toggle"><input type="checkbox" data-filter="trait" value="cultural" /> Cultural</label>
-            <label class="filter-toggle"><input type="checkbox" data-filter="trait" value="industrial" /> Industrial</label>
-            <label class="filter-toggle"><input type="checkbox" data-filter="trait" value="hazardous" /> Hazardous</label>
+          <div class="filter-section">
+            <div class="filter-heading">Trait</div>
+            <div class="filter-row">
+              <label class="filter-toggle"><input type="checkbox" data-filter="trait" value="cultural" /> Cultural</label>
+              <label class="filter-toggle"><input type="checkbox" data-filter="trait" value="industrial" /> Industrial</label>
+              <label class="filter-toggle"><input type="checkbox" data-filter="trait" value="hazardous" /> Hazardous</label>
+            </div>
           </div>
-          <div class="filter-row">
-            <label class="filter-toggle"><input type="checkbox" data-filter="tech" value="propulsion" /> Propulsion</label>
-            <label class="filter-toggle"><input type="checkbox" data-filter="tech" value="biotic" /> Biotic</label>
-            <label class="filter-toggle"><input type="checkbox" data-filter="tech" value="cybernetic" /> Cybernetic</label>
-            <label class="filter-toggle"><input type="checkbox" data-filter="tech" value="warfare" /> Warfare</label>
+          <div class="filter-section">
+            <div class="filter-heading">Tech Skip</div>
+            <div class="filter-row">
+              <label class="filter-toggle"><input type="checkbox" data-filter="tech" value="propulsion" /> Propulsion</label>
+              <label class="filter-toggle"><input type="checkbox" data-filter="tech" value="biotic" /> Biotic</label>
+              <label class="filter-toggle"><input type="checkbox" data-filter="tech" value="cybernetic" /> Cybernetic</label>
+              <label class="filter-toggle"><input type="checkbox" data-filter="tech" value="warfare" /> Warfare</label>
+            </div>
           </div>
-          <div class="filter-row">
-            <label class="filter-toggle"><input type="checkbox" data-filter="wormhole" /> Wormhole</label>
-            <label class="filter-toggle"><input type="checkbox" data-filter="station" /> Space station</label>
-            <label class="filter-toggle"><input type="checkbox" data-filter="legendary" /> Legendary</label>
+          <div class="filter-section">
+            <div class="filter-heading">Other</div>
+            <div class="filter-row">
+              <label class="filter-toggle"><input type="checkbox" data-filter="wormhole" /> Wormhole</label>
+              <label class="filter-toggle"><input type="checkbox" data-filter="station" /> Space station</label>
+              <label class="filter-toggle"><input type="checkbox" data-filter="legendary" /> Legendary</label>
+            </div>
           </div>
-          <div class="filter-row">
-            <label class="filter-toggle"><input type="checkbox" data-filter="planetCount" value="1" /> 1 planet</label>
-            <label class="filter-toggle"><input type="checkbox" data-filter="planetCount" value="2" /> 2 planets</label>
-            <label class="filter-toggle"><input type="checkbox" data-filter="planetCount" value="3" /> 3 planets</label>
+          <div class="filter-section">
+            <div class="filter-heading">Planet Count</div>
+            <div class="filter-row">
+              <label class="filter-toggle"><input type="checkbox" data-filter="planetCount" value="1" /> 1 planet</label>
+              <label class="filter-toggle"><input type="checkbox" data-filter="planetCount" value="2" /> 2 planets</label>
+              <label class="filter-toggle"><input type="checkbox" data-filter="planetCount" value="3" /> 3 planets</label>
+            </div>
           </div>
           <button id="btn-clear-filters" class="filter-clear-btn">Clear filters</button>
         </div>
