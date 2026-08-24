@@ -136,6 +136,24 @@
       svg.appendChild(g);
     });
 
+    // Adjacent hexes share an edge, and whichever one is drawn later in the
+    // loop above paints over that shared edge -- so a locked tile's thick
+    // border could get partly covered by a neighbor drawn afterward,
+    // depending on where it falls in ring order. Drawing every locked
+    // tile's outline again here, as the very last things appended to the
+    // <svg>, guarantees it paints on top of every neighbor regardless.
+    lockedKeys.forEach((key) => {
+      if (!board.has(key)) return;
+      const cell = keyToCell.get(key);
+      if (!cell) return;
+      const { x, y } = axialToPixel(cell.q, cell.r);
+      svg.appendChild(svgEl("polygon", {
+        points: hexPolygonPoints(x, y),
+        class: "hex-lock-outline",
+        "pointer-events": "none",
+      }));
+    });
+
     renderBoardStats();
   }
 
