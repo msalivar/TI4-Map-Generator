@@ -788,6 +788,63 @@
     renderAll();
   }
 
+  function sliceBalanceGap(homeSlices) {
+    const totals = [...homeSlices.values()].map((breakdown) => breakdown.total);
+    return Math.max(...totals) - Math.min(...totals);
+  }
+
+  // Greedy local search (same idea as ti4-lab's improveBalance.ts): try
+  // random pairs of unlocked tiles, keep a swap only if it shrinks the
+  // gap between the highest and lowest home slice value, and repeat
+  // passes until a full pass finds no further improvement (a local
+  // optimum) or MAX_BALANCE_ITERATIONS is hit as a safety cap -- the
+  // board is small (well under 40 tiles) so this is cheap either way.
+  const MAX_BALANCE_ITERATIONS = 2000;
+
+  function balanceUnlocked() {
+    const eligibleKeys = [...board.keys()].filter((key) => !lockedKeys.has(key));
+    if (eligibleKeys.length < 2) return;
+
+    const swapTiles = (keyA, keyB) => {
+      const tileA = board.get(keyA);
+      const tileB = board.get(keyB);
+      board.set(keyA, tileB);
+      board.set(keyB, tileA);
+    };
+
+    let currentGap = sliceBalanceGap(computeHomeSlices(board, homeKeys, RINGS));
+    let iterations = 0;
+    let improved = true;
+
+    while (improved && iterations < MAX_BALANCE_ITERATIONS) {
+      improved = false;
+      const pairs = [];
+      for (let i = 0; i < eligibleKeys.length; i++) {
+        for (let j = i + 1; j < eligibleKeys.length; j++) {
+          pairs.push([eligibleKeys[i], eligibleKeys[j]]);
+        }
+      }
+      shuffle(pairs);
+
+      for (const [keyA, keyB] of pairs) {
+        iterations++;
+        swapTiles(keyA, keyB);
+        const newGap = sliceBalanceGap(computeHomeSlices(board, homeKeys, RINGS));
+        if (newGap < currentGap) {
+          currentGap = newGap;
+          improved = true;
+          break;
+        }
+        swapTiles(keyA, keyB); // revert -- this swap didn't help
+        if (iterations >= MAX_BALANCE_ITERATIONS) break;
+      }
+    }
+
+    selectedPoolKey = null;
+    persist();
+    renderAll();
+  }
+
   function moveOrSwapTile(sourceKey, targetKey) {
     const sourceTile = board.get(sourceKey);
     if (!sourceTile) return;
@@ -1278,6 +1335,7 @@
     });
 
     document.getElementById("btn-shuffle-unlocked").addEventListener("click", shuffleUnlocked);
+    document.getElementById("btn-balance").addEventListener("click", balanceUnlocked);
     document.getElementById("btn-lock-tool").addEventListener("click", () => setLockToolActive(!lockToolActive));
     document.getElementById("btn-clear").addEventListener("click", clearBoard);
     document.getElementById("btn-export-png").addEventListener("click", exportPng);
