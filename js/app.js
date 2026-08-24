@@ -484,9 +484,16 @@
     infText.textContent = planet.influence;
     planetGroup.appendChild(infText);
 
-    const boxWidth = Math.max(30, Math.min(maxBoxWidth != null ? maxBoxWidth : r * 3.4, 70));
-    const maxChars = Math.max(4, Math.floor((boxWidth - 6) / 3.9));
+    // Cap width drives wrapping (same as before -- long names still wrap
+    // at the same point), but the box itself only needs to be as wide as
+    // its longest actual line, so short names don't carry the same empty
+    // padding a long name needs.
+    const CHAR_WIDTH_ESTIMATE = 3.9; // px per character at .planet-name's font-size
+    const capWidth = Math.max(30, Math.min(maxBoxWidth != null ? maxBoxWidth : r * 3.4, 70));
+    const maxChars = Math.max(4, Math.floor((capWidth - 6) / CHAR_WIDTH_ESTIMATE));
     const nameLines = wrapPlanetName(planet.name, maxChars);
+    const longestLine = Math.max(...nameLines.map((line) => line.length));
+    const boxWidth = Math.max(16, Math.min(longestLine * CHAR_WIDTH_ESTIMATE + 6, capWidth));
     const lineHeight = 8;
     const boxHeight = nameLines.length * lineHeight + 3;
     // Overlaps the lower part of the circle instead of sitting below it,
