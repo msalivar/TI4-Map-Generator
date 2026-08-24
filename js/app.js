@@ -132,11 +132,15 @@
   const optWormholes = document.getElementById("opt-wormholes");
   const optEntropic = document.getElementById("opt-entropic");
   const optLegendary = document.getElementById("opt-legendary");
+  const optTechSkip = document.getElementById("opt-tech-skip");
+  const optMaxTraitGap = document.getElementById("opt-max-trait-gap");
+  const traitGapLabel = document.getElementById("trait-gap-label");
   const optAvoidAdjacentAnomalies = document.getElementById("opt-avoid-adjacent-anomalies");
 
   const BLUE_PER_PLAYER = 3; // matches the "Recommended: 3 blue / 2 red per player" hint in index.html
   const MAX_WORMHOLES = 8;
   const MAX_ENTROPIC_SCAR = 2;
+  const MAX_TECH_SKIP = 15;
 
   function computeViewBox() {
     const pts = cells.map((c) => axialToPixel(c.q, c.r));
@@ -231,6 +235,23 @@
     `;
   }
 
+  // Shared with the randomizer's trait-balance option, so both the
+  // overlay and the randomizer agree on what "planet trait counts" means.
+  function computeTraitCounts(tiles) {
+    const traitCounts = { cultural: 0, industrial: 0, hazardous: 0 };
+    tiles.forEach((tile) => {
+      tile.planets.forEach((p) => {
+        if (p.trait && traitCounts[p.trait] !== undefined) traitCounts[p.trait]++;
+      });
+    });
+    return traitCounts;
+  }
+
+  function traitCountGap(traitCounts) {
+    const values = Object.values(traitCounts);
+    return Math.max(...values) - Math.min(...values);
+  }
+
   function renderBoardStats() {
     const allTiles = [MECATOL_REX, ...board.values()];
     let blueCount = 0;
@@ -238,7 +259,6 @@
     let resources = 0;
     let influence = 0;
     const techCounts = { warfare: 0, propulsion: 0, biotic: 0, cybernetic: 0 };
-    const traitCounts = { cultural: 0, industrial: 0, hazardous: 0 };
 
     allTiles.forEach((tile) => {
       if (tile.back === "blue") blueCount++;
@@ -247,9 +267,9 @@
         resources += p.resources;
         influence += p.influence;
         if (p.tech && techCounts[p.tech] !== undefined) techCounts[p.tech]++;
-        if (p.trait && traitCounts[p.trait] !== undefined) traitCounts[p.trait]++;
       });
     });
+    const traitCounts = computeTraitCounts(allTiles);
 
     function swatch(color) {
       return color ? `<span class="stats-swatch" style="background:${color}"></span>` : "";
@@ -1076,10 +1096,12 @@
     const wormholeAvail = available.filter((t) => t.wormholes.length > 0).length;
     const entropicAvail = available.filter((t) => t.anomalies.includes("entropicScar")).length;
     const legendaryAvail = available.filter((t) => t.planets.some((p) => p.legendary)).length;
+    const techSkipAvail = available.filter((t) => t.planets.some((p) => p.tech)).length;
 
     populateSelectRange(optWormholes, Math.min(wormholeAvail, MAX_WORMHOLES, n));
     populateSelectRange(optEntropic, Math.min(entropicAvail, MAX_ENTROPIC_SCAR, n));
     populateSelectRange(optLegendary, Math.min(legendaryAvail, n));
+    populateSelectRange(optTechSkip, Math.min(techSkipAvail, MAX_TECH_SKIP, n));
 
     optBlueCount.max = String(n);
     if (!optBlueCount.dataset.touched) {
@@ -1093,18 +1115,25 @@
 
   // Necessary AND sufficient conditions for randomizeWithOptions to fully
   // satisfy `opts` given the current visible pool and empty-hex count `n`.
-  // (Derivation: legendary/Entropic Scar/wormhole tiles are mutually
-  // exclusive categories in every tile set today, so each forced-pick count
-  // succeeds in full as long as it doesn't exceed availability and the
-  // three minimums together don't exceed n. Every tile is exactly blue or
-  // red, so once the forced picks are satisfied, the blue/red ratio-fill
-  // succeeds in full iff blueCount/redCount don't exceed total blue/red
-  // availability.)
+  // (Derivation: legendary/Entropic Scar/wormhole/tech-skip tiles are
+  // treated as independent forced-pick categories, each drawing from
+  // tiles not already claimed by an earlier category in the priority
+  // order -- so this check is precise as long as those categories don't
+  // overlap. Legendary and tech-skip DO overlap now (several legendary
+  // planets also carry a tech specialty), so in the rare case where both
+  // minimums are pushed high enough to jointly exceed the true number of
+  // distinct tiles satisfying either, the fill can still come up short of
+  // what this validation promised -- same known trade-off already
+  // accepted for the original three categories. Every tile is exactly
+  // blue or red, so once the forced picks are satisfied, the blue/red
+  // ratio-fill succeeds in full iff blueCount/redCount don't exceed total
+  // blue/red availability.)
   function describeUnmetRandomizeOptions(opts, n) {
     const available = visiblePoolTiles();
     const legendaryAvail = available.filter((t) => t.planets.some((p) => p.legendary)).length;
     const entropicAvail = available.filter((t) => t.anomalies.includes("entropicScar")).length;
     const wormholeAvail = available.filter((t) => t.wormholes.length > 0).length;
+    const techSkipAvail = available.filter((t) => t.planets.some((p) => p.tech)).length;
     const blueAvail = available.filter((t) => t.back === "blue").length;
     const redAvail = available.filter((t) => t.back === "red").length;
 
@@ -1117,9 +1146,12 @@
     if (opts.wormholeCount > wormholeAvail) {
       return `Only ${wormholeAvail} wormhole tile(s) available in the selected tile sets, but ${opts.wormholeCount} requested.`;
     }
-    const forcedTotal = opts.legendaryMin + opts.entropicScarCount + opts.wormholeCount;
+    if (opts.techSkipMin > techSkipAvail) {
+      return `Only ${techSkipAvail} tech-skip tile(s) available in the selected tile sets, but ${opts.techSkipMin} requested.`;
+    }
+    const forcedTotal = opts.legendaryMin + opts.entropicScarCount + opts.wormholeCount + opts.techSkipMin;
     if (forcedTotal > n) {
-      return `The legendary + Entropic Scar + wormhole minimums add up to ${forcedTotal}, but there are only ${n} empty hex(es) to fill.`;
+      return `The legendary + Entropic Scar + wormhole + tech-skip minimums add up to ${forcedTotal}, but there are only ${n} empty hex(es) to fill.`;
     }
     if (opts.blueCount > blueAvail) {
       return `Only ${blueAvail} blue tile(s) available in the selected tile sets, but ${opts.blueCount} requested.`;
@@ -1204,14 +1236,21 @@
     }
 
     // Priority order matters: a tile matching more than one category (e.g.
-    // legendary and wormhole) is claimed by whichever category runs first
-    // and is then unavailable to a later one, even if that later count was
-    // reported as achievable by updateRandomizeBounds (which counts each
-    // category independently). No current tile is in more than one of
-    // these categories, but a future tile set could change that.
+    // legendary and wormhole, or legendary and tech-skip) is claimed by
+    // whichever category runs first and is then unavailable to a later
+    // one, even if that later count was reported as achievable by
+    // updateRandomizeBounds (which counts each category independently).
     takeRandom(available.filter((t) => t.planets.some((p) => p.legendary)), opts.legendaryMin);
     takeRandom(available.filter((t) => t.anomalies.includes("entropicScar")), opts.entropicScarCount);
     takeRandom(available.filter((t) => t.wormholes.length > 0), opts.wormholeCount);
+    takeRandom(available.filter((t) => t.planets.some((p) => p.tech)), opts.techSkipMin);
+
+    // Tiles picked above to satisfy a minimum are off-limits to the
+    // trait-balance pass below -- swapping one away could drop that
+    // minimum's actual count under what was promised. Tiles from the
+    // ratio-fill/leftover-fill steps that follow aren't protected, since
+    // they were never guaranteeing anything specific.
+    const protectedPoolKeys = new Set(selected.map(poolKey));
 
     // blueCount/redCount are targets for the WHOLE fill (including tiles
     // already claimed above by the forced picks), not just for what's left
@@ -1244,9 +1283,62 @@
       board.set(key, tile);
     });
 
+    improveTraitBalance(assignment, protectedPoolKeys, opts.maxTraitGap);
+
     selectedPoolKey = null;
     persist();
     renderAll();
+  }
+
+  // Best-effort: swaps a just-placed, unprotected tile for a same-color
+  // tile from the pool whenever that reduces the whole-board gap between
+  // the highest and lowest Cultural/Industrial/Hazardous count, repeating
+  // until the gap is within maxGap or a full pass finds no improving
+  // swap. Never touches tiles outside `assignment` (so locked/pre-existing
+  // tiles are untouched, matching Randomize's existing "only fills empty
+  // hexes" guarantee) or tiles in `protectedPoolKeys` (so it can't starve
+  // a minimum -- legendary/Entropic Scar/wormhole/tech-skip -- that was
+  // just satisfied above). Swapping in a same-color pool tile can still
+  // change other things about a slot (e.g. reintroduce an anomaly
+  // adjacency avoidAdjacentAnomalies just avoided); that's an accepted
+  // trade-off of running this pass last, same spirit as every other
+  // "best effort" option here.
+  function improveTraitBalance(assignment, protectedPoolKeys, maxGap) {
+    const swappableKeys = [...assignment.keys()].filter((key) => !protectedPoolKeys.has(poolKey(assignment.get(key))));
+    if (swappableKeys.length === 0) return;
+
+    const MAX_TRAIT_BALANCE_ITERATIONS = 500;
+    let iterations = 0;
+    let improved = true;
+
+    while (improved && iterations < MAX_TRAIT_BALANCE_ITERATIONS) {
+      const gap = traitCountGap(computeTraitCounts([MECATOL_REX, ...board.values()]));
+      if (gap <= maxGap) return;
+      improved = false;
+
+      for (const key of shuffle([...swappableKeys])) {
+        const currentTile = board.get(key);
+        const candidates = shuffle(visiblePoolTiles().filter((t) => t.back === currentTile.back));
+
+        for (const candidate of candidates) {
+          iterations++;
+          board.set(key, candidate);
+          pool.delete(poolKey(candidate));
+          pool.set(poolKey(currentTile), currentTile);
+
+          const newGap = traitCountGap(computeTraitCounts([MECATOL_REX, ...board.values()]));
+          if (newGap < gap) {
+            improved = true;
+            break;
+          }
+          board.set(key, currentTile);
+          pool.delete(poolKey(currentTile));
+          pool.set(poolKey(candidate), candidate);
+          if (iterations >= MAX_TRAIT_BALANCE_ITERATIONS) break;
+        }
+        if (improved || iterations >= MAX_TRAIT_BALANCE_ITERATIONS) break;
+      }
+    }
   }
 
   function shuffle(arr) {
@@ -1484,6 +1576,8 @@
         wormholeCount: Number(optWormholes.value),
         entropicScarCount: Number(optEntropic.value),
         legendaryMin: Number(optLegendary.value),
+        techSkipMin: Number(optTechSkip.value),
+        maxTraitGap: Number(optMaxTraitGap.value),
         avoidAdjacentAnomalies: optAvoidAdjacentAnomalies.checked,
       };
       const error = describeUnmetRandomizeOptions(opts, n);
@@ -1498,6 +1592,9 @@
     optBlueCount.addEventListener("input", () => {
       optBlueCount.dataset.touched = "1";
       updateBlueCountLabel();
+    });
+    optMaxTraitGap.addEventListener("input", () => {
+      traitGapLabel.textContent = `Max planet-trait gap: ${optMaxTraitGap.value}`;
     });
     const layoutEl = document.querySelector(".layout");
     const btnTogglePalette = document.getElementById("btn-toggle-palette");

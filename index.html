@@ -113,6 +113,15 @@
         Legendary planets (minimum)
         <select id="opt-legendary"></select>
       </label>
+      <label class="modal-field">
+        Tech skips (minimum)
+        <select id="opt-tech-skip"></select>
+      </label>
+      <label class="modal-field">
+        <span id="trait-gap-label">Max planet-trait gap: 20</span>
+        <input type="range" id="opt-max-trait-gap" min="0" max="20" step="1" value="20" />
+        <span class="modal-hint">Best effort — caps the difference between the highest and lowest Cultural/Industrial/Hazardous count on the board</span>
+      </label>
       <label class="modal-checkbox-field">
         <input type="checkbox" id="opt-avoid-adjacent-anomalies" />
         Avoid placing anomalies next to each other (best effort)
