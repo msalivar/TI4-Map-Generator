@@ -32,7 +32,7 @@ const MECATOL_REX = {
   back: "none",
   set: "base",
   name: "Mecatol Rex",
-  planets: [{ name: "Mecatol Rex", resources: 1, influence: 6, trait: null, tech: null, legendary: true, station: false }],
+  planets: [{ name: "Mecatol Rex", resources: 1, influence: 6, traits: [], techs: [], legendary: true, station: false }],
   wormholes: [],
   anomalies: [],
 };
@@ -40,8 +40,24 @@ const MECATOL_REX = {
 const TRAITS = ["cultural", "industrial", "hazardous"];
 const TECHS = ["propulsion", "cybernetic", "biotic", "warfare"];
 
+// trait/tech accept either a single string or an array -- most planets have
+// exactly one of each, but some Thunder's Edge planets have two (a planet
+// counts as having both traits/techs for scoring and tech-skip purposes).
+function normalizeList(value) {
+  if (!value) return [];
+  return Array.isArray(value) ? value : [value];
+}
+
 function makePlanet(name, resources, influence, trait, tech, legendary, station) {
-  return { name, resources, influence, trait: trait || null, tech: tech || null, legendary: !!legendary, station: !!station };
+  return {
+    name,
+    resources,
+    influence,
+    traits: normalizeList(trait),
+    techs: normalizeList(tech),
+    legendary: !!legendary,
+    station: !!station,
+  };
 }
 
 // Base-game generic system tiles (real tile numbers 19-38), sourced
@@ -112,12 +128,12 @@ const POK_TILES = [
   { id: 68, back: "red", planets: [makePlanet("Everra", 3, 1, "cultural")], anomalies: ["nebula"] },
   { id: 69, back: "blue", planets: [makePlanet("Accoen", 2, 3, "industrial"), makePlanet("Jeol Ir", 2, 3, "industrial")] },
   { id: 70, back: "blue", planets: [makePlanet("Kraag", 2, 1, "hazardous"), makePlanet("Siig", 0, 2, "hazardous")] },
-  { id: 71, back: "blue", planets: [makePlanet("Bakal", 3, 2, "cultural"), makePlanet("Alio Prima", 1, 1, "industrial")] },
-  { id: 72, back: "blue", planets: [makePlanet("Lisis", 2, 2, "industrial"), makePlanet("Velnor", 2, 1, "industrial")] },
-  { id: 73, back: "blue", planets: [makePlanet("Cealdri", 0, 2, "cultural"), makePlanet("Xanhact", 0, 1, "hazardous")] },
-  { id: 74, back: "blue", planets: [makePlanet("Vega Major", 2, 1, "cultural"), makePlanet("Vega Minor", 1, 2, "cultural")] },
+  { id: 71, back: "blue", planets: [makePlanet("Bakal", 3, 2, "industrial"), makePlanet("Alio Prima", 1, 1, "cultural")] },
+  { id: 72, back: "blue", planets: [makePlanet("Lisis", 2, 2, "industrial"), makePlanet("Velnor", 2, 1, "industrial", "warfare")] },
+  { id: 73, back: "blue", planets: [makePlanet("Cealdri", 0, 2, "cultural", "cybernetic"), makePlanet("Xanhact", 0, 1, "hazardous")] },
+  { id: 74, back: "blue", planets: [makePlanet("Vega Major", 2, 1, "cultural"), makePlanet("Vega Minor", 1, 2, "cultural", "propulsion")] },
   { id: 75, back: "blue", planets: [makePlanet("Abaddon", 1, 0, "cultural"), makePlanet("Loki", 1, 2, "cultural"), makePlanet("Ashtroth", 2, 0, "hazardous")] },
-  { id: 76, back: "blue", planets: [makePlanet("Rigel I", 0, 1, "hazardous"), makePlanet("Rigel II", 1, 2, "industrial"), makePlanet("Rigel III", 1, 1, "industrial")] },
+  { id: 76, back: "blue", planets: [makePlanet("Rigel I", 0, 1, "hazardous"), makePlanet("Rigel II", 1, 2, "industrial"), makePlanet("Rigel III", 1, 1, "industrial", "biotic")] },
   { id: 77, back: "red", planets: [] },
   { id: 78, back: "red", planets: [] },
   { id: 79, back: "red", planets: [], anomalies: ["asteroid"], wormholes: ["alpha"] },
@@ -127,27 +143,27 @@ const POK_TILES = [
 // Thunder's Edge — generic system tiles only. Faction/gate home systems
 // (92-96, 118), the alternate Mecatol Rex (112), and hyperlane/fracture
 // tiles (119-128) are excluded for the same reason as PoK's exclusions
-// above. Trait/tech below is sourced from the wiki's Thunder's Edge page
-// (which has a fuller "New Planet Systems" table than the general Tiles
-// List); that table doesn't cover tile 110's three planets, so those
-// traits came from a physical-tile check instead (tech is still unknown
-// for them — edit this file to fill it in from your physical set).
+// above. Trait/tech cross-checked against github.com/heisenbugged/ti4-lab's
+// system data. Thunder's Edge introduces dual-trait and dual-tech planets
+// (a planet counts as having both, per the wiki's Planets page) -- see
+// makePlanet()'s trait/tech array support.
+
 const THUNDERS_EDGE_TILES = [
   { id: 97, back: "blue", planets: [makePlanet("Faunus", 1, 3, "industrial", "biotic", true)] },
   { id: 98, back: "blue", planets: [makePlanet("Garbozia", 2, 1, "hazardous", null, true)] },
   { id: 99, back: "blue", planets: [makePlanet("Emelpar", 0, 2, "cultural", null, true)] },
   { id: 100, back: "blue", planets: [makePlanet("Tempesta", 1, 1, "hazardous", "propulsion", true)] },
-  { id: 101, back: "blue", planets: [makePlanet("Olergodt", 2, 1, "cultural", "cybernetic")] },
+  { id: 101, back: "blue", planets: [makePlanet("Olergodt", 2, 1, ["cultural", "hazardous"], ["cybernetic", "warfare"])] },
   { id: 102, back: "blue", planets: [makePlanet("Andeara", 1, 1, "industrial", "propulsion")], wormholes: ["alpha"] },
-  { id: 103, back: "blue", planets: [makePlanet("Vira-Pics III", 2, 3, "cultural")] },
-  { id: 104, back: "blue", planets: [makePlanet("Lesab", 2, 1, "industrial")] },
-  { id: 105, back: "blue", planets: [makePlanet("New Terra", 1, 1, "industrial", "biotic"), makePlanet("Tinnes", 2, 1, "industrial", "biotic")] },
-  { id: 106, back: "blue", planets: [makePlanet("Cresius", 0, 1, "hazardous"), makePlanet("Lazul Rex", 2, 2, "cultural")] },
-  { id: 107, back: "blue", planets: [makePlanet("Tiamat", 2, 1, "cultural", "cybernetic"), makePlanet("Hercalor", 1, 0, "industrial")] },
+  { id: 103, back: "blue", planets: [makePlanet("Vira-Pics III", 2, 3, ["cultural", "hazardous"])] },
+  { id: 104, back: "blue", planets: [makePlanet("Lesab", 2, 1, ["industrial", "hazardous"])] },
+  { id: 105, back: "blue", planets: [makePlanet("New Terra", 1, 1, "industrial", "biotic"), makePlanet("Tinnes", 2, 1, ["industrial", "hazardous"], "biotic")] },
+  { id: 106, back: "blue", planets: [makePlanet("Cresius", 0, 1, "hazardous"), makePlanet("Lazul Rex", 2, 2, ["industrial", "cultural"])] },
+  { id: 107, back: "blue", planets: [makePlanet("Tiamat", 1, 2, "cultural", "cybernetic"), makePlanet("Hercalor", 1, 0, "industrial")] },
   { id: 108, back: "blue", planets: [makePlanet("Kostboth", 0, 1, "cultural"), makePlanet("Capha", 3, 0, "hazardous")] },
   { id: 109, back: "blue", planets: [makePlanet("Bellatrix", 1, 2, "cultural"), makePlanet("Tsion Station", 1, 1, null, null, false, true)] },
-  { id: 110, back: "blue", planets: [makePlanet("Horizon", 1, 2, "industrial"), makePlanet("Elnath", 2, 0, "hazardous"), makePlanet("Luthien VI", 3, 1, "hazardous")] },
-  { id: 111, back: "blue", planets: [makePlanet("Tarana", 1, 2, "cultural"), makePlanet("Oluz Station", 1, 1, null, null, false, true)] },
+  { id: 110, back: "blue", planets: [makePlanet("Horizon", 1, 2, "cultural"), makePlanet("Elnath", 2, 0, "hazardous"), makePlanet("Luthien VI", 3, 1, "hazardous")] },
+  { id: 111, back: "blue", planets: [makePlanet("Tarana", 1, 2, ["industrial", "cultural"]), makePlanet("Oluz Station", 1, 1, null, null, false, true)] },
   { id: 113, back: "red", planets: [], anomalies: ["rift"], wormholes: ["beta"] },
   { id: 114, back: "red", planets: [], anomalies: ["entropicScar"] },
   { id: 115, back: "red", planets: [makePlanet("Industrex", 2, 0, "industrial", "warfare", true)], anomalies: ["asteroid"] },
@@ -156,27 +172,28 @@ const THUNDERS_EDGE_TILES = [
 ];
 
 // Discordant Stars (fan expansion) — its "Uncharted Space" tile set: 5
-// legendary planets, 12 blue, 7 red. The source wiki doesn't publish tile
-// numbers for the 5 legendary planets, so ids 4251-4255 are assigned here,
-// kept distinct from the community's 4257-4276 numbering used for the rest.
+// legendary planets, 12 blue, 7 red. Tile numbers (including the 5
+// legendary planets, which the wiki doesn't publish) cross-checked against
+// github.com/heisenbugged/ti4-lab's system data to match real physical
+// tile backs.
 const DISCORDANT_STARS_TILES = [
-  { id: 4251, back: "blue", planets: [makePlanet("Silence", 2, 2, "industrial", null, true)] },
-  { id: 4252, back: "blue", planets: [makePlanet("Echo", 1, 2, "hazardous", null, true)] },
-  { id: 4253, back: "blue", planets: [makePlanet("Tarrock", 3, 0, "industrial", null, true)] },
-  { id: 4254, back: "blue", planets: [makePlanet("Prism", 0, 3, "industrial", null, true)] },
-  { id: 4255, back: "red", planets: [makePlanet("Domna", 2, 1, "hazardous", null, true)], anomalies: ["nebula"] },
+  { id: 4253, back: "blue", planets: [makePlanet("Silence", 2, 2, "industrial", null, true)] },
+  { id: 4254, back: "blue", planets: [makePlanet("Echo", 1, 2, "hazardous", null, true)] },
+  { id: 4255, back: "blue", planets: [makePlanet("Tarrock", 3, 0, "industrial", null, true)] },
+  { id: 4256, back: "blue", planets: [makePlanet("Prism", 0, 3, "industrial", null, true)] },
   { id: 4257, back: "blue", planets: [makePlanet("Troac", 0, 4, "cultural")] },
   { id: 4258, back: "blue", planets: [makePlanet("Etir V", 4, 0, "hazardous")] },
   { id: 4259, back: "blue", planets: [makePlanet("Vioss", 3, 3, "cultural")] },
   { id: 4260, back: "blue", planets: [makePlanet("Fakrenn", 2, 2, "hazardous")], wormholes: ["alpha"] },
   { id: 4261, back: "blue", planets: [makePlanet("San-Vit", 3, 1, "cultural"), makePlanet("Lodran", 0, 2, "hazardous", "cybernetic")] },
   { id: 4262, back: "blue", planets: [makePlanet("Dorvok", 1, 2, "industrial", "warfare"), makePlanet("Derbrae", 2, 3, "cultural")] },
-  { id: 4263, back: "blue", planets: [makePlanet("Moln", 1, 2, "industrial", "propulsion"), makePlanet("Rysaa", 2, 0, "hazardous", "biotic")] },
+  { id: 4263, back: "blue", planets: [makePlanet("Rysaa", 1, 2, "industrial", "propulsion"), makePlanet("Moln", 2, 0, "hazardous", "biotic")] },
   { id: 4264, back: "blue", planets: [makePlanet("Salin", 1, 2, "hazardous"), makePlanet("Gwiyun", 2, 2, "hazardous")] },
   { id: 4265, back: "blue", planets: [makePlanet("Inan", 1, 2, "industrial"), makePlanet("Swog", 1, 0, "industrial")] },
   { id: 4266, back: "blue", planets: [makePlanet("Detic", 3, 2, "cultural"), makePlanet("Lliot", 0, 1, "cultural")] },
   { id: 4267, back: "blue", planets: [makePlanet("Qaak", 1, 1, "cultural"), makePlanet("Larred", 1, 1, "industrial"), makePlanet("Nairb", 1, 1, "hazardous")] },
   { id: 4268, back: "blue", planets: [makePlanet("Sierpen", 2, 0, "cultural"), makePlanet("Mandle", 1, 1, "industrial"), makePlanet("Regnem", 0, 2, "hazardous")] },
+  { id: 4269, back: "red", planets: [makePlanet("Domna", 2, 1, "hazardous", null, true)], anomalies: ["nebula"] },
   { id: 4270, back: "red", planets: [] },
   { id: 4271, back: "red", planets: [] },
   { id: 4272, back: "red", planets: [], anomalies: ["nebula"], wormholes: ["beta"] },

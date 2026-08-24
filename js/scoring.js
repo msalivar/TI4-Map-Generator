@@ -55,7 +55,9 @@ function describeTileValue(tile) {
   const parts = [];
   tile.planets.forEach((planet) => {
     parts.push({ label: `${planet.name} base`, amount: Math.max(planet.resources, planet.influence), category: "base" });
-    if (planet.tech) parts.push({ label: `${planet.name} tech skip`, amount: TECH_BONUS, category: "tech" });
+    // A dual-tech planet (Thunder's Edge) can satisfy either prerequisite
+    // when exhausted, so each tech it carries contributes its own bonus.
+    planet.techs.forEach((tech) => parts.push({ label: `${planet.name} tech skip (${tech})`, amount: TECH_BONUS, category: "tech" }));
     if (planet.legendary) parts.push({ label: `${planet.name} legendary`, amount: legendaryValue(planet), category: "legendary" });
     if (planet.station) parts.push({ label: `${planet.name} station`, amount: STATION_BONUS, category: "station" });
   });
@@ -78,9 +80,10 @@ function tileOptimalInfluence(tile) {
 }
 
 // Raw tech type strings (e.g. "biotic"), not display letters -- app.js
-// owns the letter/color mapping since that's a display concern.
+// owns the letter/color mapping since that's a display concern. A
+// dual-tech planet contributes both of its types.
 function tileTechTypes(tile) {
-  return tile.planets.filter((p) => p.tech).map((p) => p.tech);
+  return tile.planets.flatMap((p) => p.techs);
 }
 
 function parseKey(key) {

@@ -84,8 +84,8 @@
   };
 
   function tileMatchesFilters(tile) {
-    if (filterState.trait.size && !tile.planets.some((p) => p.trait && filterState.trait.has(p.trait))) return false;
-    if (filterState.tech.size && !tile.planets.some((p) => p.tech && filterState.tech.has(p.tech))) return false;
+    if (filterState.trait.size && !tile.planets.some((p) => p.traits.some((t) => filterState.trait.has(t)))) return false;
+    if (filterState.tech.size && !tile.planets.some((p) => p.techs.some((t) => filterState.tech.has(t)))) return false;
     if (filterState.wormhole && tile.wormholes.length === 0) return false;
     if (filterState.station && !tile.planets.some((p) => p.station)) return false;
     if (filterState.legendary && !tile.planets.some((p) => p.legendary)) return false;
@@ -242,7 +242,9 @@
     const traitCounts = { cultural: 0, industrial: 0, hazardous: 0 };
     tiles.forEach((tile) => {
       tile.planets.forEach((p) => {
-        if (p.trait && traitCounts[p.trait] !== undefined) traitCounts[p.trait]++;
+        // A dual-trait planet counts toward both trait buckets (matches the
+        // real rule: it counts as having both traits for objective scoring).
+        p.traits.forEach((t) => { if (traitCounts[t] !== undefined) traitCounts[t]++; });
       });
     });
     return traitCounts;
@@ -268,7 +270,7 @@
       tile.planets.forEach((p) => {
         resources += p.resources;
         influence += p.influence;
-        if (p.tech && techCounts[p.tech] !== undefined) techCounts[p.tech]++;
+        p.techs.forEach((t) => { if (techCounts[t] !== undefined) techCounts[t]++; });
         if (p.legendary) legendaryCount++;
       });
     });
@@ -455,55 +457,52 @@
     g.appendChild(planetGroup);
 
     const r = planet.legendary ? baseRadius * LEGENDARY_SCALE : baseRadius;
-    const fill = TRAIT_COLORS[planet.trait] || "#5a6580";
+    // A dual-trait planet (Thunder's Edge) splits the circle into two
+    // color wedges instead of picking one -- the outline is drawn as a
+    // separate final circle (below) so the split doesn't cover it.
+    const traitFill = (t) => TRAIT_COLORS[t] || "#5a6580";
+    planetGroup.appendChild(svgEl("circle", { cx, cy, r, fill: traitFill(planet.traits[0]) }));
+    if (planet.traits.length > 1) {
+      planetGroup.appendChild(svgEl("path", {
+        d: `M ${cx} ${cy - r} A ${r} ${r} 0 0 1 ${cx} ${cy + r} Z`,
+        fill: traitFill(planet.traits[1]),
+      }));
+    }
     planetGroup.appendChild(svgEl("circle", {
-      cx, cy, r, fill,
+      cx, cy, r, fill: "none",
       stroke: planet.legendary ? "#ffd76a" : "#0b0e17",
       "stroke-width": planet.legendary ? 2.5 : 1,
     }));
 
-    const hasTechIcon = planet.tech && TECH_ICON_DATA_URIS[planet.tech];
-    if (planet.legendary && hasTechIcon) {
-      // Some legendary planets (e.g. Faunus, Tempesta) also carry a tech
-      // specialty -- show both, side by side on the circle's top edge,
-      // rather than letting the legendary badge hide the tech icon.
-      const badgeSize = r * 0.62;
-      const iconSize = r * 0.6;
+    // Legendary badge and tech-skip icon(s) share the circle's top edge.
+    // Most planets need at most one of these, but some legendary planets
+    // also carry a tech specialty, and Thunder's Edge has dual-tech
+    // planets (with no real tile needing all three at once) -- lay out
+    // however many items are actually present instead of hardcoding pairs.
+    const techIconHrefs = planet.techs.map((t) => TECH_ICON_DATA_URIS[t]).filter(Boolean);
+    const topItems = [];
+    if (planet.legendary) topItems.push(LEGENDARY_BADGE_DATA_URI);
+    topItems.push(...techIconHrefs);
+
+    if (topItems.length === 1) {
+      const size = r * (topItems[0] === LEGENDARY_BADGE_DATA_URI ? 0.8 : 0.78);
+      planetGroup.appendChild(svgEl("image", {
+        href: topItems[0], x: cx - size / 2, y: cy - r - size / 2, width: size, height: size,
+      }));
+    } else if (topItems.length === 2) {
+      const size = r * 0.6;
       const offsetX = r * 0.44;
-      planetGroup.appendChild(svgEl("image", {
-        href: LEGENDARY_BADGE_DATA_URI,
-        x: cx - offsetX - badgeSize / 2,
-        y: cy - r - badgeSize / 2,
-        width: badgeSize,
-        height: badgeSize,
-      }));
-      planetGroup.appendChild(svgEl("image", {
-        href: TECH_ICON_DATA_URIS[planet.tech],
-        x: cx + offsetX - iconSize / 2,
-        y: cy - r - iconSize / 2,
-        width: iconSize,
-        height: iconSize,
-      }));
-    } else if (planet.legendary) {
-      const badgeSize = r * 0.8;
-      planetGroup.appendChild(svgEl("image", {
-        href: LEGENDARY_BADGE_DATA_URI,
-        x: cx - badgeSize / 2,
-        y: cy - r - badgeSize / 2,
-        width: badgeSize,
-        height: badgeSize,
-      }));
-    } else if (hasTechIcon) {
-      // Centered on the circle's top edge, straddling the boundary, rather
-      // than floating above it.
-      const iconSize = r * 0.78;
-      planetGroup.appendChild(svgEl("image", {
-        href: TECH_ICON_DATA_URIS[planet.tech],
-        x: cx - iconSize / 2,
-        y: cy - r - iconSize / 2,
-        width: iconSize,
-        height: iconSize,
-      }));
+      topItems.forEach((href, i) => {
+        const x = cx + (i === 0 ? -offsetX : offsetX);
+        planetGroup.appendChild(svgEl("image", { href, x: x - size / 2, y: cy - r - size / 2, width: size, height: size }));
+      });
+    } else if (topItems.length === 3) {
+      const size = r * 0.5;
+      const offsetX = r * 0.6;
+      const xs = [cx - offsetX, cx, cx + offsetX];
+      topItems.forEach((href, i) => {
+        planetGroup.appendChild(svgEl("image", { href, x: xs[i] - size / 2, y: cy - r - size / 2, width: size, height: size }));
+      });
     }
 
     if (planet.station) {
@@ -814,7 +813,7 @@
   function showTooltip(e, tile) {
     const lines = [tile.type === "mecatol" ? "Mecatol Rex" : `Tile #${tile.id}`];
     tile.planets.forEach((p) => {
-      lines.push(`${p.name} — ${p.resources}R / ${p.influence}I${p.trait ? " · " + p.trait : ""}${p.tech ? " · " + p.tech + " tech" : ""}${p.station ? " · space station" : ""}`);
+      lines.push(`${p.name} — ${p.resources}R / ${p.influence}I${p.traits.length ? " · " + p.traits.join("/") : ""}${p.techs.length ? " · " + p.techs.join("/") + " tech" : ""}${p.station ? " · space station" : ""}`);
     });
     tile.wormholes.forEach((w) => lines.push(WORMHOLE_LABELS[w] || w));
     tile.anomalies.forEach((a) => lines.push(ANOMALY_LABELS[a] || a));
@@ -1112,7 +1111,7 @@
     const wormholeAvail = available.filter((t) => t.wormholes.length > 0).length;
     const entropicAvail = available.filter((t) => t.anomalies.includes("entropicScar")).length;
     const legendaryAvail = available.filter((t) => t.planets.some((p) => p.legendary)).length;
-    const techSkipAvail = available.filter((t) => t.planets.some((p) => p.tech)).length;
+    const techSkipAvail = available.filter((t) => t.planets.some((p) => p.techs.length)).length;
 
     populateSelectRange(optWormholes, Math.min(wormholeAvail, MAX_WORMHOLES, n));
     populateSelectRange(optEntropic, Math.min(entropicAvail, MAX_ENTROPIC_SCAR, n));
@@ -1149,7 +1148,7 @@
     const legendaryAvail = available.filter((t) => t.planets.some((p) => p.legendary)).length;
     const entropicAvail = available.filter((t) => t.anomalies.includes("entropicScar")).length;
     const wormholeAvail = available.filter((t) => t.wormholes.length > 0).length;
-    const techSkipAvail = available.filter((t) => t.planets.some((p) => p.tech)).length;
+    const techSkipAvail = available.filter((t) => t.planets.some((p) => p.techs.length)).length;
     const blueAvail = available.filter((t) => t.back === "blue").length;
     const redAvail = available.filter((t) => t.back === "red").length;
 
@@ -1259,7 +1258,7 @@
     takeRandom(available.filter((t) => t.planets.some((p) => p.legendary)), opts.legendaryMin);
     takeRandom(available.filter((t) => t.anomalies.includes("entropicScar")), opts.entropicScarCount);
     takeRandom(available.filter((t) => t.wormholes.length > 0), opts.wormholeCount);
-    takeRandom(available.filter((t) => t.planets.some((p) => p.tech)), opts.techSkipMin);
+    takeRandom(available.filter((t) => t.planets.some((p) => p.techs.length)), opts.techSkipMin);
 
     // Tiles picked above to satisfy a minimum are off-limits to the
     // trait-balance pass below -- swapping one away could drop that
@@ -1413,11 +1412,13 @@
   }
 
   // Map strings list one number per hex in ring order (skipping Mecatol
-  // Rex, which is always the center) -- the same convention used by other
-  // TI4 map tools: "0" for a home system, a tile's id otherwise, "-1" for a
-  // non-home hex that's still empty. `cells.slice(1)` already visits hexes
-  // in exactly that ring-by-ring order (verified against a real example
-  // string), so no reordering is needed.
+  // Rex, which is always the center), starting north of Mecatol and
+  // sweeping clockwise within each ring -- the same convention other TI4
+  // map tools use. "0" for a home system, a tile's id otherwise, "-1" for
+  // a non-home hex that's still empty. `mapStringCells` (from
+  // generateMapStringOrder() in hexgrid.js) provides exactly that order;
+  // it's deliberately separate from `cells`, which rendering/home-slot
+  // assignment rely on its own (different) order for.
   function serializeMapString() {
     return mapStringCells
       .map((c) => {
