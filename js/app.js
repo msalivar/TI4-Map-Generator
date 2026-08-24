@@ -131,6 +131,8 @@
     defs.appendChild(clipPath);
     svg.appendChild(defs);
 
+    const homeSlices = computeHomeSlices(board, homeKeys, RINGS);
+
     cells.forEach((c) => {
       const key = keyFor(c.q, c.r);
       const { x, y } = axialToPixel(c.q, c.r);
@@ -139,7 +141,7 @@
       if (c.ring === 0) {
         drawTile(g, x, y, MECATOL_REX, "mecatol", key, false);
       } else if (homeKeys.has(key)) {
-        drawHomeSlot(g, x, y, key);
+        drawHomeSlot(g, x, y, key, homeSlices.get(key));
       } else if (board.has(key)) {
         const tile = board.get(key);
         drawTile(g, x, y, tile, tile.back, key, true);
@@ -233,16 +235,41 @@
     g.appendChild(poly);
   }
 
-  function drawHomeSlot(g, x, y, key) {
+  function playerNameForHomeKey(key) {
     const idx = [...homeKeys].indexOf(key);
+    return playerNames[idx] || `Player ${idx + 1}`;
+  }
+
+  function drawHomeSlot(g, x, y, key, breakdown) {
     const poly = svgEl("polygon", { points: hexPolygonPoints(x, y), class: "hex home", "data-key": key });
+    poly.addEventListener("mousemove", (e) => showHomeTooltip(e, key, breakdown));
+    poly.addEventListener("mouseleave", hideTooltip);
     g.appendChild(poly);
-    const label = svgEl("text", { x, y: y - 4, class: "hex-label" });
-    label.textContent = "HOME";
-    g.appendChild(label);
-    const sub = svgEl("text", { x, y: y + 12, class: "hex-sublabel" });
-    sub.textContent = playerNames[idx] || `Player ${idx + 1}`;
-    g.appendChild(sub);
+
+    const nameLabel = svgEl("text", { x, y: y - 26, class: "hex-label" });
+    nameLabel.textContent = playerNameForHomeKey(key);
+    g.appendChild(nameLabel);
+
+    const scoreLabel = svgEl("text", { x, y: y - 8, class: "hex-sublabel" });
+    scoreLabel.textContent = `Score: ${formatScore(breakdown.total)}`;
+    g.appendChild(scoreLabel);
+
+    const resInfLabel = svgEl("text", { x, y: y + 10, class: "hex-sublabel" });
+    const resSpan = svgEl("tspan", { class: "planet-number-res" });
+    resSpan.textContent = `${formatScore(breakdown.optimalResources)}R`;
+    const infSpan = svgEl("tspan", { class: "planet-number-inf" });
+    infSpan.textContent = `${formatScore(breakdown.optimalInfluence)}I`;
+    resInfLabel.appendChild(resSpan);
+    resInfLabel.appendChild(document.createTextNode(" / "));
+    resInfLabel.appendChild(infSpan);
+    g.appendChild(resInfLabel);
+
+    const techLetters = techLettersFor(breakdown.techTypes);
+    if (techLetters) {
+      const techLabel = svgEl("text", { x, y: y + 28, class: "hex-sublabel" });
+      techLabel.textContent = techLetters;
+      g.appendChild(techLabel);
+    }
   }
 
   // Draws everything about a tile's appearance (hex fill, anomaly art, id
