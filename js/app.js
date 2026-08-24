@@ -818,18 +818,27 @@
     showTooltipLines(e, lines);
   }
 
+  const VALUE_CATEGORY_LABELS = {
+    base: "Planets",
+    tech: "Tech skips",
+    legendary: "Legendary",
+    station: "Space stations",
+    wormhole: "Wormholes",
+    entropicScar: "Entropic Scars",
+  };
+  const VALUE_CATEGORY_ORDER = ["base", "tech", "legendary", "station", "wormhole", "entropicScar"];
+
   function showHomeTooltip(e, key, breakdown) {
     const playerName = playerNameForHomeKey(key);
     const lines = [`${playerName} — Slice value ${formatScore(breakdown.total)}`];
-    breakdown.tiles.forEach((entry) => {
-      const desc = describeTileValue(entry.tile);
-      const parts = desc.parts.map((p) => `${p.label} ${formatScore(p.amount)}`).join(", ");
-      const splitNote = entry.splitWith.length
-        ? ` (shared with ${entry.splitWith.map(playerNameForHomeKey).join(", ")})`
-        : "";
-      lines.push(`#${entry.tile.id}: ${formatScore(entry.contribution)}${splitNote} — ${parts}`);
+    VALUE_CATEGORY_ORDER.forEach((category) => {
+      const amount = breakdown.categoryTotals[category];
+      if (amount > 0) lines.push(`${VALUE_CATEGORY_LABELS[category]}: ${formatScore(amount)}`);
     });
     if (breakdown.pathPenalty > 0) lines.push(`Path penalty: -${formatScore(breakdown.pathPenalty)}`);
+    const sharedCount = breakdown.tiles.filter((t) => t.splitWith.length > 0).length;
+    const sharedNote = sharedCount > 0 ? `, ${sharedCount} shared` : "";
+    lines.push(`${breakdown.tiles.length} tiles counted${sharedNote}`);
     showTooltipLines(e, lines);
   }
 

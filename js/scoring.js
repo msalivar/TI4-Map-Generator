@@ -42,19 +42,25 @@ function planetOptimalInfluence(planet) {
   return planet.influence > planet.resources ? planet.influence : 0;
 }
 
-// Per-tile value broken into labeled parts, so the same computation
-// produces both a total (tileValue) and an itemized tooltip breakdown
-// (used by app.js's home-tile tooltip) without duplicating the formula.
+// The category each value part belongs to, used to roll per-tile parts
+// up into per-home category subtotals (see computeHomeSlices) instead of
+// listing every tile individually in the home-tile tooltip.
+const VALUE_CATEGORIES = ["base", "tech", "legendary", "station", "wormhole", "entropicScar"];
+
+// Per-tile value broken into labeled+categorized parts, so the same
+// computation produces both a total (tileValue) and a breakdown usable
+// either itemized (per part) or rolled up (per category, see
+// computeHomeSlices) without duplicating the formula.
 function describeTileValue(tile) {
   const parts = [];
   tile.planets.forEach((planet) => {
-    parts.push({ label: `${planet.name} base`, amount: Math.max(planet.resources, planet.influence) });
-    if (planet.tech) parts.push({ label: `${planet.name} tech skip`, amount: TECH_BONUS });
-    if (planet.legendary) parts.push({ label: `${planet.name} legendary`, amount: legendaryValue(planet) });
-    if (planet.station) parts.push({ label: `${planet.name} station`, amount: STATION_BONUS });
+    parts.push({ label: `${planet.name} base`, amount: Math.max(planet.resources, planet.influence), category: "base" });
+    if (planet.tech) parts.push({ label: `${planet.name} tech skip`, amount: TECH_BONUS, category: "tech" });
+    if (planet.legendary) parts.push({ label: `${planet.name} legendary`, amount: legendaryValue(planet), category: "legendary" });
+    if (planet.station) parts.push({ label: `${planet.name} station`, amount: STATION_BONUS, category: "station" });
   });
-  tile.wormholes.forEach(() => parts.push({ label: "Wormhole", amount: WORMHOLE_BONUS }));
-  if (tile.anomalies.includes("entropicScar")) parts.push({ label: "Entropic Scar", amount: ENTROPIC_SCAR_BONUS });
+  tile.wormholes.forEach(() => parts.push({ label: "Wormhole", amount: WORMHOLE_BONUS, category: "wormhole" }));
+  if (tile.anomalies.includes("entropicScar")) parts.push({ label: "Entropic Scar", amount: ENTROPIC_SCAR_BONUS, category: "entropicScar" });
   const total = parts.reduce((sum, part) => sum + part.amount, 0);
   return { total, parts };
 }
@@ -104,8 +110,12 @@ function homePathTiles(homeKey, rings) {
  * a Map<"q,r", tile>; `homeKeys` an iterable of "q,r" strings; `rings`
  * the board's ring count. Returns a Map<homeKey, breakdown>, where
  * breakdown is:
- *   { total, optimalResources, optimalInfluence, techTypes, pathPenalty,
- *     tiles: [{ tile, contribution, splitWith: [otherHomeKey, ...] }] }
+ *   { total, optimalResources, optimalInfluence, techTypes,
+ *     categoryTotals: { base, tech, legendary, station, wormhole, entropicScar },
+ *     pathPenalty, tiles: [{ tile, contribution, splitWith: [otherHomeKey, ...] }] }
+ * categoryTotals mirrors total's breakdown by describeTileValue() category
+ * (each tile's share applied the same way as total), for a per-home
+ * summary without walking `tiles` -- see app.js's showHomeTooltip().
  */
 function computeHomeSlices(board, homeKeys, rings) {
   const homeKeyList = [...homeKeys];
@@ -115,6 +125,7 @@ function computeHomeSlices(board, homeKeys, rings) {
       optimalResources: 0,
       optimalInfluence: 0,
       techTypes: [],
+      categoryTotals: Object.fromEntries(VALUE_CATEGORIES.map((c) => [c, 0])),
       pathPenalty: 0,
       tiles: [],
     }]),
@@ -139,7 +150,10 @@ function computeHomeSlices(board, homeKeys, rings) {
     });
     if (reachingHomes.length === 0) return;
 
-    const value = tileValue(tile);
+    const desc = describeTileValue(tile);
+    const value = desc.total;
+    const categorySums = Object.fromEntries(VALUE_CATEGORIES.map((c) => [c, 0]));
+    desc.parts.forEach((part) => { categorySums[part.category] += part.amount; });
     const optRes = tileOptimalResources(tile);
     const optInf = tileOptimalInfluence(tile);
     const techTypes = tileTechTypes(tile);
@@ -149,6 +163,7 @@ function computeHomeSlices(board, homeKeys, rings) {
       const entry = results.get(homeKey);
       const contribution = value * share;
       entry.total += contribution;
+      VALUE_CATEGORIES.forEach((c) => { entry.categoryTotals[c] += categorySums[c] * share; });
       entry.optimalResources += optRes * share;
       entry.optimalInfluence += optInf * share;
       techTypes.forEach((t) => entry.techTypes.push(t));
