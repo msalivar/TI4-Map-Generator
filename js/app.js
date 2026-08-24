@@ -91,6 +91,7 @@
   const tileSetsModalEl = document.getElementById("tile-sets-modal");
   const randomizeErrorEl = document.getElementById("randomize-error");
   const boardStatsEl = document.getElementById("board-stats");
+  const sliceBalanceEl = document.getElementById("slice-balance");
   const randomizeModal = document.getElementById("randomize-modal");
   const optBlueCount = document.getElementById("opt-blue-count");
   const blueCountLabel = document.getElementById("blue-count-label");
@@ -172,6 +173,27 @@
     });
 
     renderBoardStats();
+    renderSliceBalance(homeSlices);
+  }
+
+  function renderSliceBalance(homeSlices) {
+    const entries = [...homeSlices.entries()].map(([key, breakdown]) => ({
+      name: playerNameForHomeKey(key),
+      total: breakdown.total,
+    }));
+    if (!entries.length) {
+      sliceBalanceEl.innerHTML = "";
+      return;
+    }
+    const highest = entries.reduce((a, b) => (b.total > a.total ? b : a));
+    const lowest = entries.reduce((a, b) => (b.total < a.total ? b : a));
+    const gap = highest.total - lowest.total;
+    sliceBalanceEl.innerHTML = `
+      <div class="stats-heading">Slice Balance</div>
+      <div>Gap: <span class="stats-num">${formatScore(gap)}</span></div>
+      <div>Highest: ${highest.name} (${formatScore(highest.total)})</div>
+      <div>Lowest: ${lowest.name} (${formatScore(lowest.total)})</div>
+    `;
   }
 
   function renderBoardStats() {

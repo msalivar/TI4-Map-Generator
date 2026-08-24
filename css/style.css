@@ -138,6 +138,10 @@ button.active:hover {
   pointer-events: none;
   max-width: 210px;
 }
+.board-stats-right {
+  left: auto;
+  right: 8px;
+}
 .stats-heading {
   color: var(--text-dim);
   text-transform: uppercase;
