@@ -47,8 +47,14 @@
   const WORMHOLE_COLORS = { alpha: "#e0902f", beta: "#3fa34d", gamma: "#c9576f", delta: "#7a6fd0", epsilon: "#4d7bd1" };
   const WORMHOLE_SYMBOLS = { alpha: "α", beta: "β", gamma: "γ", delta: "δ", epsilon: "ε" };
   const WORMHOLE_ICON_SLOTS = [
-    { dx: 50, dy: 0 },
-    { dx: -50, dy: 0 },
+    { dx: 42, dy: 0 },
+    { dx: -42, dy: 0 },
+  ];
+  // Tiles with a wormhole but no planet have nothing else claiming the
+  // tile's center, so the icon(s) sit there instead of out at the side.
+  const WORMHOLE_ICON_SLOTS_CENTERED = [
+    { dx: -14, dy: 0 },
+    { dx: 14, dy: 0 },
   ];
   const PIXEL_CELL = 2;
   const PIXEL_COLS = 68;
@@ -329,8 +335,9 @@
       drawPlanetCluster(g, x, y, tile.planets);
     }
 
+    const wormholeSlots = wormholeSlotsFor(tile);
     tile.wormholes.forEach((w, i) => {
-      const slot = WORMHOLE_ICON_SLOTS[i] || WORMHOLE_ICON_SLOTS[WORMHOLE_ICON_SLOTS.length - 1];
+      const slot = wormholeSlots[i] || wormholeSlots[wormholeSlots.length - 1];
       drawWormholeIcon(g, x + slot.dx, y + slot.dy, w);
     });
 
@@ -510,11 +517,53 @@
     });
   }
 
+  function wormholeSlotsFor(tile) {
+    if (tile.planets.length > 0) return WORMHOLE_ICON_SLOTS;
+    if (tile.wormholes.length <= 1) return [{ dx: 0, dy: 0 }];
+    return WORMHOLE_ICON_SLOTS_CENTERED;
+  }
+
+  const WORMHOLE_SWIRL_COLOR = "#ff9d2e";
+
+  function spiralArmPoints(cx, cy, startAngle, startR, endR, turns, steps) {
+    const points = [];
+    for (let i = 0; i <= steps; i++) {
+      const t = i / steps;
+      const angle = startAngle + t * turns * Math.PI * 2;
+      const r = startR + (endR - startR) * t;
+      points.push(`${(cx + r * Math.cos(angle)).toFixed(2)},${(cy + r * Math.sin(angle)).toFixed(2)}`);
+    }
+    return points.join(" ");
+  }
+
+  // Two mirrored spiral arms read as a small galaxy/whirlpool shape
+  // rather than a single comet-tail streak.
+  function drawWormholeSwirl(g, cx, cy) {
+    [0, Math.PI].forEach((startAngle) => {
+      g.appendChild(svgEl("polyline", {
+        points: spiralArmPoints(cx, cy, startAngle, 3, 13, 0.85, 16),
+        fill: "none",
+        stroke: WORMHOLE_SWIRL_COLOR,
+        "stroke-width": 2,
+        "stroke-linecap": "round",
+        opacity: 0.75,
+      }));
+    });
+  }
+
   function drawWormholeIcon(g, x, y, type) {
+    // pointer-events: none for the same reason every other decorative
+    // planet/anomaly layer needs it -- this sits on top of the hex
+    // polygon as a DOM sibling, not a child, so without it the swirl
+    // would swallow the polygon's own click/hover/drag listeners
+    // wherever it covers them.
+    const wrapper = svgEl("g", { "pointer-events": "none" });
+    drawWormholeSwirl(wrapper, x, y);
     const color = WORMHOLE_COLORS[type] || "#9aa4c0";
     const label = svgEl("text", { x, y: y + 4, class: "wormhole-icon-label", fill: color });
     label.textContent = WORMHOLE_SYMBOLS[type] || "?";
-    g.appendChild(label);
+    wrapper.appendChild(label);
+    g.appendChild(wrapper);
   }
 
   // Anomaly backgrounds are drawn as a grid of square "pixels" covering the
