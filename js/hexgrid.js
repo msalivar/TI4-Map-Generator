@@ -50,6 +50,40 @@ function generateHexRings(rings) {
   return cells;
 }
 
+/**
+ * Axial coordinates in "map string" order: ring by ring (nearest first),
+ * and within each ring starting at the tile directly above the center
+ * (north) and proceeding clockwise. This is the order community TI4
+ * map-string tools/imports expect for export/import, and is intentionally
+ * independent of generateHexRings()'s own internal order (which starts
+ * southwest and sweeps counterclockwise) -- that order is relied on
+ * elsewhere for rendering and home-slot corner assignment, so it isn't
+ * changed here; this is a separate traversal for the map-string format only.
+ */
+function generateMapStringOrder(rings) {
+  const directions = [
+    { q: 1, r: 0 }, { q: 1, r: -1 }, { q: 0, r: -1 },
+    { q: -1, r: 0 }, { q: -1, r: 1 }, { q: 0, r: 1 },
+  ];
+  // Corners of a ring sit at direction[i]*ring; walking them in this
+  // step order starting from directions[2]*ring (north) sweeps clockwise.
+  const clockwiseFromNorthSteps = [0, 5, 4, 3, 2, 1];
+  const cells = [];
+  for (let ring = 1; ring <= rings; ring++) {
+    let q = 0;
+    let r = -ring;
+    clockwiseFromNorthSteps.forEach((dirIdx) => {
+      const dir = directions[dirIdx];
+      for (let step = 0; step < ring; step++) {
+        cells.push({ q, r });
+        q += dir.q;
+        r += dir.r;
+      }
+    });
+  }
+  return cells;
+}
+
 function keyFor(q, r) {
   return `${q},${r}`;
 }

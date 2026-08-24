@@ -6,6 +6,7 @@
   const STORAGE_KEY = "ti4-map-generator-state-v1";
 
   const cells = generateHexRings(RINGS);
+  const mapStringCells = generateMapStringOrder(RINGS);
   const homeKeys = new Set(homeSlotKeys(RINGS));
   const keyToCell = new Map(cells.map((c) => [keyFor(c.q, c.r), c]));
   const DRAG_THRESHOLD = 6;
@@ -1418,8 +1419,7 @@
   // in exactly that ring-by-ring order (verified against a real example
   // string), so no reordering is needed.
   function serializeMapString() {
-    return cells
-      .slice(1)
+    return mapStringCells
       .map((c) => {
         const key = keyFor(c.q, c.r);
         if (homeKeys.has(key)) return "0";
@@ -1431,7 +1431,7 @@
 
   function parseMapString(str) {
     const tokens = str.trim().split(/\s+/).filter(Boolean);
-    const rest = cells.slice(1);
+    const rest = mapStringCells;
     if (tokens.length !== rest.length) {
       alert(`Expected ${rest.length} numbers (one per non-Mecatol hex), got ${tokens.length}.`);
       return;
