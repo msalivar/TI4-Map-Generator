@@ -503,14 +503,17 @@
     }
 
     if (planet.station) {
-      // A small ringed-station glyph on the lower-right edge of the circle
-      // -- no real icon asset for this, so it's an abstract "orbital ring"
-      // symbol rather than official artwork.
-      const sx = cx + r * 0.72;
-      const sy = cy + r * 0.52;
+      // A small ringed-station glyph on the upper-left of the circle --
+      // no real icon asset for this, so it's an abstract "orbital ring"
+      // symbol rather than official artwork. The resource number's own
+      // bounding box (stroke + font metrics) is tall enough to span
+      // nearly the whole circle vertically, so a pure left-mid position
+      // still collides with it; pulling the glyph up clears that.
+      const sx = cx - r * 0.85;
+      const sy = cy - r * 0.85;
       const ringR = r * 0.24;
       planetGroup.appendChild(svgEl("line", {
-        x1: sx - ringR - 3, y1: sy, x2: sx + ringR + 3, y2: sy, stroke: "#d7deee", "stroke-width": 1.4,
+        x1: sx - ringR - 2, y1: sy, x2: sx + ringR + 2, y2: sy, stroke: "#d7deee", "stroke-width": 1.4,
       }));
       planetGroup.appendChild(svgEl("circle", { cx: sx, cy: sy, r: ringR, fill: "#232a3d", stroke: "#d7deee", "stroke-width": 1.6 }));
     }
