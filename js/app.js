@@ -102,6 +102,7 @@
   const optWormholes = document.getElementById("opt-wormholes");
   const optEntropic = document.getElementById("opt-entropic");
   const optLegendary = document.getElementById("opt-legendary");
+  const optAvoidAdjacentAnomalies = document.getElementById("opt-avoid-adjacent-anomalies");
 
   const BLUE_PER_PLAYER = 3; // matches the "Recommended: 3 blue / 2 red per player" hint in index.html
   const MAX_WORMHOLES = 8;
@@ -1048,6 +1049,62 @@
     return null;
   }
 
+  function keysAdjacent(keyA, keyB) {
+    const a = parseKey(keyA);
+    const b = parseKey(keyB);
+    return hexDistance(a.q, a.r, b.q, b.r) === 1;
+  }
+
+  // Assigns `selected` tiles to `emptyKeys` positions. With
+  // avoidAdjacentAnomalies off, this is a plain random shuffle+zip (the
+  // prior behavior, unchanged). With it on, anomaly tiles are placed
+  // one at a time into whichever remaining empty position isn't
+  // hex-adjacent to another anomaly -- either one already placed this
+  // pass, or one already sitting on the board outside emptyKeys (e.g. a
+  // locked tile). This is best-effort, not a hard guarantee: if too
+  // many anomaly tiles are being placed into too few/cramped empty
+  // slots, some remaining position is picked anyway rather than leaving
+  // tiles unplaced.
+  function assignTilesToKeys(emptyKeys, selected, avoidAdjacentAnomalies) {
+    const assignment = new Map();
+
+    if (!avoidAdjacentAnomalies) {
+      const shuffled = shuffle([...selected]);
+      emptyKeys.forEach((key, i) => {
+        if (shuffled[i]) assignment.set(key, shuffled[i]);
+      });
+      return assignment;
+    }
+
+    const emptyKeySet = new Set(emptyKeys);
+    const existingAnomalyKeys = [...board.entries()]
+      .filter(([key, tile]) => !emptyKeySet.has(key) && tile.anomalies.length > 0)
+      .map(([key]) => key);
+
+    const anomalyTiles = shuffle(selected.filter((t) => t.anomalies.length > 0));
+    const otherTiles = shuffle(selected.filter((t) => t.anomalies.length === 0));
+    const remainingKeys = shuffle([...emptyKeys]);
+    const placedAnomalyKeys = [];
+
+    anomalyTiles.forEach((tile) => {
+      const safeIndex = remainingKeys.findIndex((key) =>
+        !existingAnomalyKeys.some((ak) => keysAdjacent(ak, key))
+        && !placedAnomalyKeys.some((ak) => keysAdjacent(ak, key)),
+      );
+      const index = safeIndex === -1 ? 0 : safeIndex;
+      const [key] = remainingKeys.splice(index, 1);
+      assignment.set(key, tile);
+      placedAnomalyKeys.push(key);
+    });
+
+    otherTiles.forEach((tile) => {
+      const key = remainingKeys.shift();
+      if (key) assignment.set(key, tile);
+    });
+
+    return assignment;
+  }
+
   function randomizeWithOptions(opts) {
     const emptyKeys = shuffle(emptySlotKeys());
     const n = emptyKeys.length;
@@ -1100,10 +1157,8 @@
       selected.push(...leftover);
     }
 
-    shuffle(selected);
-    emptyKeys.forEach((key, i) => {
-      const tile = selected[i];
-      if (!tile) return;
+    const assignment = assignTilesToKeys(emptyKeys, selected, opts.avoidAdjacentAnomalies);
+    assignment.forEach((tile, key) => {
       pool.delete(poolKey(tile));
       board.set(key, tile);
     });
@@ -1312,6 +1367,7 @@
         wormholeCount: Number(optWormholes.value),
         entropicScarCount: Number(optEntropic.value),
         legendaryMin: Number(optLegendary.value),
+        avoidAdjacentAnomalies: optAvoidAdjacentAnomalies.checked,
       };
       const error = describeUnmetRandomizeOptions(opts, n);
       if (error) {
