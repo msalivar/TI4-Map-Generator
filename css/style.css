@@ -251,7 +251,7 @@ button.active:hover {
   stroke-linejoin: round;
 }
 .planet-number-res { fill: #6fdc8c; }
-.planet-number-inf { fill: #7fb3ff; }
+.planet-number-inf { fill: #b98eff; }
 .planet-name {
   fill: var(--text-dim);
   font-size: 6.5px;

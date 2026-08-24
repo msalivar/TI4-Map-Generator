@@ -26,7 +26,7 @@
   ];
   let enabledSets = new Set(TILE_SETS.map((s) => s.key));
 
-  const TRAIT_COLORS = { cultural: "#3fa34d", industrial: "#4d7bd1", hazardous: "#d9542f" };
+  const TRAIT_COLORS = { cultural: "#4d7bd1", industrial: "#3fa34d", hazardous: "#d9542f" };
   const TECH_SWATCH_COLORS = { warfare: "#e0524f", propulsion: "#4d7bd1", biotic: "#3fa34d", cybernetic: "#e0b93f" };
   // Order controls how repeated tech-skip letters group on a home tile
   // (e.g. two Biotic + one Cybernetic renders "GGY", not interleaved).
@@ -1496,7 +1496,7 @@
     .hex-sublabel { fill: #9aa4c0; font-size: 9px; font-family: "Segoe UI", system-ui, sans-serif; text-anchor: middle; }
     .planet-number { font-weight: 800; font-family: "Segoe UI", system-ui, sans-serif; text-anchor: middle; paint-order: stroke fill; stroke: #0b0e17; stroke-width: 2.5px; stroke-linejoin: round; }
     .planet-number-res { fill: #6fdc8c; }
-    .planet-number-inf { fill: #7fb3ff; }
+    .planet-number-inf { fill: #b98eff; }
     .planet-name { fill: #9aa4c0; font-size: 6.5px; font-family: "Segoe UI", system-ui, sans-serif; text-anchor: middle; }
     .wormhole-icon-label { font-size: 15px; font-weight: 800; font-family: "Segoe UI", system-ui, sans-serif; text-anchor: middle; paint-order: stroke fill; stroke: #0b0e17; stroke-width: 2.5px; stroke-linejoin: round; }
   `;
