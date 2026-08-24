@@ -662,6 +662,14 @@
     return lines;
   }
 
+  function showTooltipLines(e, lines) {
+    tooltip.textContent = lines.join("\n");
+    tooltip.style.whiteSpace = "pre-line";
+    tooltip.style.left = e.clientX + 14 + "px";
+    tooltip.style.top = e.clientY + 14 + "px";
+    tooltip.classList.remove("hidden");
+  }
+
   function showTooltip(e, tile) {
     const lines = [tile.type === "mecatol" ? "Mecatol Rex" : `Tile #${tile.id}`];
     tile.planets.forEach((p) => {
@@ -669,12 +677,25 @@
     });
     tile.wormholes.forEach((w) => lines.push(WORMHOLE_LABELS[w] || w));
     tile.anomalies.forEach((a) => lines.push(ANOMALY_LABELS[a] || a));
-    tooltip.textContent = lines.join("\n");
-    tooltip.style.whiteSpace = "pre-line";
-    tooltip.style.left = e.clientX + 14 + "px";
-    tooltip.style.top = e.clientY + 14 + "px";
-    tooltip.classList.remove("hidden");
+    lines.push(`Value: ${formatScore(tileValue(tile))}`);
+    showTooltipLines(e, lines);
   }
+
+  function showHomeTooltip(e, key, breakdown) {
+    const playerName = playerNameForHomeKey(key);
+    const lines = [`${playerName} — Slice value ${formatScore(breakdown.total)}`];
+    breakdown.tiles.forEach((entry) => {
+      const desc = describeTileValue(entry.tile);
+      const parts = desc.parts.map((p) => `${p.label} ${formatScore(p.amount)}`).join(", ");
+      const splitNote = entry.splitWith.length
+        ? ` (shared with ${entry.splitWith.map(playerNameForHomeKey).join(", ")})`
+        : "";
+      lines.push(`#${entry.tile.id}: ${formatScore(entry.contribution)}${splitNote} — ${parts}`);
+    });
+    if (breakdown.pathPenalty > 0) lines.push(`Path penalty: -${formatScore(breakdown.pathPenalty)}`);
+    showTooltipLines(e, lines);
+  }
+
   function hideTooltip() {
     tooltip.classList.add("hidden");
   }
