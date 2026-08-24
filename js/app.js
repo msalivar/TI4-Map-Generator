@@ -1443,10 +1443,21 @@
         const category = input.dataset.filter;
         if (category === "wormhole" || category === "station" || category === "legendary") {
           filterState[category] = input.checked;
+        } else if (category === "planetCount") {
+          // Only one planet-count value makes sense at a time (a tile
+          // can't have both 1 and 2 planets) -- picking one clears any
+          // other, but clicking the active one again still turns it off.
+          if (input.checked) {
+            filterInputs
+              .filter((other) => other.dataset.filter === "planetCount" && other !== input)
+              .forEach((other) => { other.checked = false; });
+            filterState.planetCount = new Set([Number(input.value)]);
+          } else {
+            filterState.planetCount.clear();
+          }
         } else {
-          const value = category === "planetCount" ? Number(input.value) : input.value;
-          if (input.checked) filterState[category].add(value);
-          else filterState[category].delete(value);
+          if (input.checked) filterState[category].add(input.value);
+          else filterState[category].delete(input.value);
         }
         renderPalette();
       });
