@@ -78,6 +78,11 @@ body {
   white-space: nowrap;
   flex: 0 0 auto;
 }
+.toolbar-right {
+  display: flex;
+  gap: 6px;
+  margin-left: auto;
+}
 
 button, .file-btn {
   background: var(--panel-2);
@@ -92,6 +97,14 @@ button, .file-btn {
 button:hover, .file-btn:hover {
   background: #212a44;
   border-color: var(--accent);
+}
+button.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #051022;
+}
+button.active:hover {
+  background: var(--accent);
 }
 .file-btn { display: inline-flex; align-items: center; }
 
@@ -177,8 +190,11 @@ button:hover, .file-btn:hover {
 .hex.drag-source { opacity: 0.35; }
 .hex.drop-target { stroke: var(--accent-2); stroke-width: 4; filter: brightness(1.3); }
 .hex.drop-invalid { stroke: #c9576f; stroke-width: 3; stroke-dasharray: 4 3; }
+.hex.locked { stroke: #ff2d2d; stroke-width: 5; stroke-dasharray: none; cursor: default; }
 #board-svg.dragging .hex.blue,
 #board-svg.dragging .hex.red { cursor: grabbing; }
+#board-svg.lock-tool-active .hex.blue,
+#board-svg.lock-tool-active .hex.red { cursor: pointer; }
 
 .hex-label {
   fill: var(--text);
@@ -228,27 +244,6 @@ button:hover, .file-btn:hover {
   stroke-width: 2.5px;
   stroke-linejoin: round;
 }
-.lock-toggle {
-  cursor: pointer;
-  opacity: 0.45;
-}
-.lock-toggle:hover, .lock-toggle.locked {
-  opacity: 1;
-}
-.lock-toggle-bg {
-  fill: #0b0e17;
-  stroke: var(--border);
-  stroke-width: 1;
-}
-.lock-toggle.locked .lock-toggle-bg {
-  stroke: var(--accent-2);
-}
-.lock-toggle-icon {
-  font-size: 11px;
-  text-anchor: middle;
-  user-select: none;
-}
-
 .palette-panel {
   position: relative;
   min-height: 0;

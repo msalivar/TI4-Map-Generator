@@ -246,38 +246,25 @@
   function drawTile(g, x, y, tile, backClass, key, removable) {
     const poly = buildTileVisual(g, x, y, tile, backClass, "hex-clip");
     poly.setAttribute("data-key", key);
+    // Only real placed tiles can be locked -- not Mecatol Rex (removable is
+    // false for it) and not the palette swatches (which never call drawTile
+    // at all, only the shared buildTileVisual).
     const locked = removable && lockedKeys.has(key);
-    if (removable && !locked) {
-      poly.addEventListener("click", () => onFilledClick(key));
-      poly.addEventListener("pointerdown", (e) => startTileDrag(e, poly, key));
+    if (locked) poly.classList.add("locked");
+    if (removable) {
+      if (lockToolActive) {
+        // While the locking tool is active, a click anywhere on the tile
+        // toggles its lock instead of removing it, and dragging is
+        // disabled entirely so an accidental drag can't move a tile the
+        // user is trying to lock in place.
+        poly.addEventListener("click", () => toggleLock(key));
+      } else if (!locked) {
+        poly.addEventListener("click", () => onFilledClick(key));
+        poly.addEventListener("pointerdown", (e) => startTileDrag(e, poly, key));
+      }
     }
     poly.addEventListener("mousemove", (e) => showTooltip(e, tile));
     poly.addEventListener("mouseleave", hideTooltip);
-
-    // Only real placed tiles can be locked -- not Mecatol Rex (removable
-    // is false for it) and not the palette swatches (which never call
-    // drawTile at all, only the shared buildTileVisual).
-    if (removable) drawLockToggle(g, x, y, key, locked);
-  }
-
-  // Bottom-center, mirroring the id label's top-center spot: the hex's flat
-  // bottom edge (unlike its pointed left/right corners) gives a full-width
-  // safe strip that doesn't clip the icon regardless of planet layout.
-  const LOCK_ICON_OFFSET = { dx: 0, dy: 36 };
-
-  function drawLockToggle(g, x, y, key, locked) {
-    const cx = x + LOCK_ICON_OFFSET.dx;
-    const cy = y + LOCK_ICON_OFFSET.dy;
-    const btn = svgEl("g", { class: "lock-toggle" + (locked ? " locked" : "") });
-    btn.appendChild(svgEl("circle", { cx, cy, r: 9, class: "lock-toggle-bg" }));
-    const icon = svgEl("text", { x: cx, y: cy + 4, class: "lock-toggle-icon" });
-    icon.textContent = locked ? "🔒" : "🔓";
-    btn.appendChild(icon);
-    btn.addEventListener("click", (e) => {
-      e.stopPropagation();
-      toggleLock(key);
-    });
-    g.appendChild(btn);
   }
 
   const LEGENDARY_SCALE = 1.25;
@@ -644,7 +631,6 @@
   }
 
   function onFilledClick(key) {
-    if (lockedKeys.has(key)) return;
     const tile = board.get(key);
     if (!tile) return;
     board.delete(key);
@@ -666,6 +652,15 @@
     if (lockedKeys.has(key)) lockedKeys.delete(key);
     else lockedKeys.add(key);
     persist();
+    renderAll();
+  }
+
+  let lockToolActive = false;
+
+  function setLockToolActive(active) {
+    lockToolActive = active;
+    document.getElementById("btn-lock-tool").classList.toggle("active", active);
+    svg.classList.toggle("lock-tool-active", active);
     renderAll();
   }
 
@@ -1169,6 +1164,7 @@
     });
 
     document.getElementById("btn-shuffle-unlocked").addEventListener("click", shuffleUnlocked);
+    document.getElementById("btn-lock-tool").addEventListener("click", () => setLockToolActive(!lockToolActive));
     document.getElementById("btn-clear").addEventListener("click", clearBoard);
     document.getElementById("btn-export-png").addEventListener("click", exportPng);
     document.getElementById("btn-export-mapstring").addEventListener("click", () => {
