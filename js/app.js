@@ -68,6 +68,30 @@
     return [...pool.values()].filter((t) => t.set === "base" || enabledSets.has(t.set));
   }
 
+  // Palette-only display filters (don't affect Randomize or which tile
+  // sets are enabled -- purely narrows what's shown in the tile picker).
+  // trait/tech/planetCount are multi-select (OR within the category);
+  // wormhole/station/legendary are single on/off toggles. A category
+  // with nothing selected imposes no constraint.
+  const filterState = {
+    trait: new Set(),
+    tech: new Set(),
+    wormhole: false,
+    station: false,
+    legendary: false,
+    planetCount: new Set(),
+  };
+
+  function tileMatchesFilters(tile) {
+    if (filterState.trait.size && !tile.planets.some((p) => p.trait && filterState.trait.has(p.trait))) return false;
+    if (filterState.tech.size && !tile.planets.some((p) => p.tech && filterState.tech.has(p.tech))) return false;
+    if (filterState.wormhole && tile.wormholes.length === 0) return false;
+    if (filterState.station && !tile.planets.some((p) => p.station)) return false;
+    if (filterState.legendary && !tile.planets.some((p) => p.legendary)) return false;
+    if (filterState.planetCount.size && !filterState.planetCount.has(tile.planets.length)) return false;
+    return true;
+  }
+
   function renderTileSetToggles() {
     [tileSetsEl, tileSetsModalEl].forEach((container) => {
       if (!container) return;
@@ -976,6 +1000,7 @@
     paletteBlue.innerHTML = "";
     paletteRed.innerHTML = "";
     visiblePoolTiles()
+      .filter(tileMatchesFilters)
       .sort((a, b) => a.id - b.id)
       .forEach((tile) => {
         const key = poolKey(tile);
@@ -1412,6 +1437,31 @@
   }
 
   function init() {
+    const filterInputs = [...document.querySelectorAll("#palette-panel [data-filter]")];
+    filterInputs.forEach((input) => {
+      input.addEventListener("change", () => {
+        const category = input.dataset.filter;
+        if (category === "wormhole" || category === "station" || category === "legendary") {
+          filterState[category] = input.checked;
+        } else {
+          const value = category === "planetCount" ? Number(input.value) : input.value;
+          if (input.checked) filterState[category].add(value);
+          else filterState[category].delete(value);
+        }
+        renderPalette();
+      });
+    });
+    document.getElementById("btn-clear-filters").addEventListener("click", () => {
+      filterInputs.forEach((input) => { input.checked = false; });
+      filterState.trait.clear();
+      filterState.tech.clear();
+      filterState.wormhole = false;
+      filterState.station = false;
+      filterState.legendary = false;
+      filterState.planetCount.clear();
+      renderPalette();
+    });
+
     document.getElementById("btn-randomize").addEventListener("click", openRandomizeModal);
     document.getElementById("btn-randomize-cancel").addEventListener("click", closeRandomizeModal);
     document.getElementById("btn-randomize-apply").addEventListener("click", () => {

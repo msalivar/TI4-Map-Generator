@@ -371,6 +371,28 @@ button.active:hover {
 .tile-set-toggle input {
   width: auto;
 }
+.filter-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  margin-bottom: 6px;
+}
+.filter-toggle {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.8rem;
+  color: var(--text-dim);
+  cursor: pointer;
+  white-space: nowrap;
+}
+.filter-toggle input {
+  width: auto;
+}
+.filter-clear-btn {
+  font-size: 0.75rem;
+  padding: 4px 8px;
+}
 
 .modal-overlay {
   position: fixed;
