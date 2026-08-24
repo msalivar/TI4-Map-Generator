@@ -191,15 +191,19 @@ button.active:hover {
 .hex.drop-target { stroke: var(--accent-2); stroke-width: 4; filter: brightness(1.3); }
 .hex.drop-invalid { stroke: #c9576f; stroke-width: 3; stroke-dasharray: 4 3; }
 .hex.locked { cursor: default; }
-.hex-lock-outline {
-  fill: none;
-  stroke: #ff2d2d;
-  stroke-width: 5;
-}
 #board-svg.dragging .hex.blue,
 #board-svg.dragging .hex.red { cursor: grabbing; }
 #board-svg.lock-tool-active .hex.blue,
 #board-svg.lock-tool-active .hex.red { cursor: pointer; }
+
+/* Fill-less duplicate of every hex's border, drawn on top of everything
+   (see renderBoard()) so shared edges between adjacent tiles always show
+   each tile's own true border instead of whichever neighbor was drawn
+   later. Reuses the same classes as the base polygon, so its color/width
+   rules above apply identically -- this just needs to win the "fill"
+   property specifically, and override with a distinct style for locked. */
+.hex-border-overlay.hex { fill: none; pointer-events: none; }
+.hex-border-overlay.locked { stroke: #ff2d2d; stroke-width: 5; stroke-dasharray: none; }
 
 .hex-label {
   fill: var(--text);

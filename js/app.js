@@ -137,20 +137,22 @@
     });
 
     // Adjacent hexes share an edge, and whichever one is drawn later in the
-    // loop above paints over that shared edge -- so a locked tile's thick
-    // border could get partly covered by a neighbor drawn afterward,
-    // depending on where it falls in ring order. Drawing every locked
-    // tile's outline again here, as the very last things appended to the
-    // <svg>, guarantees it paints on top of every neighbor regardless.
-    lockedKeys.forEach((key) => {
-      if (!board.has(key)) return;
-      const cell = keyToCell.get(key);
-      if (!cell) return;
-      const { x, y } = axialToPixel(cell.q, cell.r);
+    // loop above paints over that shared edge -- so any tile's border can
+    // get partly covered by whichever neighbor happens to fall later in
+    // ring order (most visible on a bold border like "locked", but it
+    // applies to every tile's border to some degree). Redrawing every
+    // hex's border again -- fill-less, same classes, appended after
+    // everything -- guarantees each tile's own border is fully visible on
+    // every side regardless of neighbor draw order. Interaction (drag,
+    // drop-target/invalid) still targets the original polygons underneath,
+    // since this overlay has pointer-events disabled via CSS; the drag
+    // code mirrors its transient classes onto the matching overlay so
+    // dimming/highlighting stays in sync (see overlayForKey).
+    svg.querySelectorAll(".hex").forEach((basePoly) => {
       svg.appendChild(svgEl("polygon", {
-        points: hexPolygonPoints(x, y),
-        class: "hex-lock-outline",
-        "pointer-events": "none",
+        points: basePoly.getAttribute("points"),
+        class: "hex-border-overlay " + basePoly.getAttribute("class"),
+        "data-key": basePoly.getAttribute("data-key"),
       }));
     });
 
@@ -704,6 +706,15 @@
     renderAll();
   }
 
+  // The border-overlay pass in renderBoard() draws a fill-less duplicate of
+  // every hex's border on top of everything (see the comment there), so
+  // transient drag styling applied to the original polygon (dimming the
+  // source, highlighting a drop target) needs to be mirrored onto its
+  // overlay too, or the overlay's static border would visually hide it.
+  function overlayForKey(key) {
+    return svg.querySelector(`.hex-border-overlay[data-key="${key}"]`);
+  }
+
   function startTileDrag(e, poly, key) {
     if (e.button !== 0) return;
     const startX = e.clientX;
@@ -714,6 +725,8 @@
     function clearTargetHighlight() {
       if (targetPoly) {
         targetPoly.classList.remove("drop-target", "drop-invalid");
+        const overlay = overlayForKey(targetPoly.dataset.key);
+        if (overlay) overlay.classList.remove("drop-target", "drop-invalid");
         targetPoly = null;
       }
     }
@@ -724,6 +737,8 @@
         dragging = true;
         svg.classList.add("dragging");
         poly.classList.add("drag-source");
+        const sourceOverlay = overlayForKey(key);
+        if (sourceOverlay) sourceOverlay.classList.add("drag-source");
         hideTooltip();
       }
       const el = document.elementFromPoint(ev.clientX, ev.clientY);
@@ -733,7 +748,10 @@
         targetPoly = hex || null;
         if (targetPoly) {
           const valid = isValidDropTarget(targetPoly.dataset.key, key);
-          targetPoly.classList.add(valid ? "drop-target" : "drop-invalid");
+          const cls = valid ? "drop-target" : "drop-invalid";
+          targetPoly.classList.add(cls);
+          const overlay = overlayForKey(targetPoly.dataset.key);
+          if (overlay) overlay.classList.add(cls);
         }
       }
     }
@@ -744,6 +762,8 @@
       if (dragging) {
         svg.classList.remove("dragging");
         poly.classList.remove("drag-source");
+        const sourceOverlay = overlayForKey(key);
+        if (sourceOverlay) sourceOverlay.classList.remove("drag-source");
         const el = document.elementFromPoint(ev.clientX, ev.clientY);
         const hex = el && el.closest(".hex");
         clearTargetHighlight();
@@ -1094,6 +1114,8 @@
     .hex.home { fill: #2e3a2a; stroke: #7fae5a; }
     .hex.mecatol { fill: #4a3a1a; stroke: #ffb347; }
     .hex.anomaly-tile { stroke: #ff5566; stroke-dasharray: 5 3; stroke-width: 2.5; }
+    .hex-border-overlay.hex { fill: none; }
+    .hex-border-overlay.locked { stroke: #ff2d2d; stroke-width: 5; stroke-dasharray: none; }
     .hex-label { fill: #e8ecf7; font-size: 11px; font-family: "Segoe UI", system-ui, sans-serif; text-anchor: middle; }
     .hex-id-label { font-size: 8px; opacity: 0.7; }
     .hex-sublabel { fill: #9aa4c0; font-size: 9px; font-family: "Segoe UI", system-ui, sans-serif; text-anchor: middle; }
