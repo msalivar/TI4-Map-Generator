@@ -258,6 +258,7 @@
     let redCount = 0;
     let resources = 0;
     let influence = 0;
+    let legendaryCount = 0;
     const techCounts = { warfare: 0, propulsion: 0, biotic: 0, cybernetic: 0 };
 
     allTiles.forEach((tile) => {
@@ -267,6 +268,7 @@
         resources += p.resources;
         influence += p.influence;
         if (p.tech && techCounts[p.tech] !== undefined) techCounts[p.tech]++;
+        if (p.legendary) legendaryCount++;
       });
     });
     const traitCounts = computeTraitCounts(allTiles);
@@ -290,6 +292,7 @@
       <div class="stats-grid">
         ${item(null, resources, "Resources")}
         ${item(null, influence, "Influence")}
+        ${item("#ffd76a", legendaryCount, "Legendary")}
       </div>
       <div class="stats-heading">Tech Skips</div>
       <div class="stats-grid">
