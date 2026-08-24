@@ -54,6 +54,11 @@ function keyFor(q, r) {
   return `${q},${r}`;
 }
 
+// Standard axial hex distance (cube-coordinate distance / 2).
+function hexDistance(q1, r1, q2, r2) {
+  return (Math.abs(q1 - q2) + Math.abs(q1 + r1 - q2 - r2) + Math.abs(r1 - r2)) / 2;
+}
+
 /**
  * Standard 6-player TI4 layout: home systems sit on the 6 corner
  * positions of the outermost ring.
