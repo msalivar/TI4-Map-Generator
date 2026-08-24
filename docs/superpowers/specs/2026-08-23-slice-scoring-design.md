@@ -72,9 +72,16 @@ This is the number shown in every tile's own tooltip (see Display section) and i
 
 ## Slice aggregation
 
-For each home system, its "slice" is every board tile within hex-distance ≤2 of that home (standard convention, matches this board's fixed layout). Empty hexes and hexes outside that radius contribute 0. Mecatol Rex never contributes to any home's slice (even though `tileValue()` still computes a number for it, for its own tooltip).
+*(Revised 2026-08-24 — the initial "everything within hex-distance ≤2" rule over-counted; the actual TI4 slice shape is narrower.)*
 
-**Equidistant tiles:** if a tile is within distance ≤2 of more than one home, its value (and its `optimalResources`/`optimalInfluence` sub-totals) splits evenly across every home that reaches it — e.g. a tile equidistant between 2 homes contributes half its value to each. This generalizes to any number of ties, not just 2-way.
+For each home system, a board tile is part of its slice if any of the following hold:
+- **Directly adjacent** to the home (hex-distance 1). Every home has exactly 3 such tiles on this board's fixed layout.
+- **On the home's fixed path to Mecatol** (see below) — adds exactly 1 new tile beyond the adjacent set, since the nearer of the 2 path tiles is always already one of the 3 adjacent ones.
+- **Equidistant between this home and at least one other home** — tied for closest among *all* homes, not just this one and its immediate neighbor. On this board's fixed 6-home layout this always works out to exactly one shared tile per pair of neighboring homes (6 such tiles total, none elsewhere on the board).
+
+That's up to 6 tiles per home (3 adjacent + 1 further path tile + 2 shared border tiles) — matching the standard real-game 5-tile Milty slice once the 2 shared tiles are counted at half value each (see equidistant splitting below). Empty hexes and any tile outside this set contribute 0. Mecatol Rex never contributes to any home's slice (even though `tileValue()` still computes a number for it, for its own tooltip).
+
+**Equidistant tiles:** if a tile is in more than one home's slice, its value (and its `optimalResources`/`optimalInfluence` sub-totals) splits evenly across every home it's in — e.g. a tile equidistant between 2 homes contributes half its value to each. This generalizes to any number of ties, not just 2-way, though in practice this board's geometry never produces more than a 2-way tie.
 
 **Tech-skip letters are not split.** If a shared tile has a tech skip, every home that reaches it gets credit for that letter — a tech skip isn't a divisible resource the way a point value is.
 

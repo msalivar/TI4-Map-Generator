@@ -29,7 +29,6 @@ const NAMED_LEGENDARY_VALUES = {
 };
 const SUPERNOVA_PATH_PENALTY = 2;
 const NEBULA_PATH_PENALTY = 1;
-const SLICE_RADIUS = 2;
 
 function legendaryValue(planet) {
   return NAMED_LEGENDARY_VALUES[planet.name] ?? DEFAULT_LEGENDARY_VALUE;
@@ -83,16 +82,28 @@ function parseKey(key) {
   return { q, r };
 }
 
+// Each home sits at direction * rings for one of the 6 primary axial
+// directions (see generateHexRings), so its fixed 2-tile path to
+// Mecatol is always direction*2 and direction*1 -- no branching, since
+// homes sit exactly on-axis from the center.
+function homePathTiles(homeKey, rings) {
+  const home = parseKey(homeKey);
+  const dq = home.q / rings;
+  const dr = home.r / rings;
+  return [keyFor(dq * 2, dr * 2), keyFor(dq * 1, dr * 1)];
+}
+
 /**
- * Computes each home system's slice value: every board tile within
- * hex-distance <=2 of that home contributes its value (split evenly
- * across every home that reaches it, if more than one does), plus a
- * penalty if a supernova/nebula sits on that home's fixed path to
- * Mecatol Rex. `board` is a Map<"q,r", tile>; `homeKeys` an iterable of
- * "q,r" strings; `rings` the board's ring count (used to find each
- * home's direction vector: homes sit at direction * rings, so their
- * fixed 2-tile path to Mecatol is at direction*2 and direction*1).
- * Returns a Map<homeKey, breakdown>, where breakdown is:
+ * Computes each home system's slice value. A tile counts toward a
+ * home's slice if it's directly adjacent to that home (hex-distance 1),
+ * on that home's fixed path to Mecatol, or equidistant between that
+ * home and at least one other home (tied for closest among ALL homes).
+ * A tile's value splits evenly across every home whose slice it's in,
+ * if more than one. On top of that, a home's total takes a penalty if
+ * a supernova/nebula sits on its fixed path to Mecatol Rex. `board` is
+ * a Map<"q,r", tile>; `homeKeys` an iterable of "q,r" strings; `rings`
+ * the board's ring count. Returns a Map<homeKey, breakdown>, where
+ * breakdown is:
  *   { total, optimalResources, optimalInfluence, techTypes, pathPenalty,
  *     tiles: [{ tile, contribution, splitWith: [otherHomeKey, ...] }] }
  */
@@ -108,12 +119,23 @@ function computeHomeSlices(board, homeKeys, rings) {
       tiles: [],
     }]),
   );
+  const homePaths = new Map(homeKeyList.map((homeKey) => [homeKey, homePathTiles(homeKey, rings)]));
 
   board.forEach((tile, key) => {
     const { q, r } = parseKey(key);
-    const reachingHomes = homeKeyList.filter((homeKey) => {
+    const distances = homeKeyList.map((homeKey) => {
       const home = parseKey(homeKey);
-      return hexDistance(q, r, home.q, home.r) <= SLICE_RADIUS;
+      return { homeKey, dist: hexDistance(q, r, home.q, home.r) };
+    });
+    const minDist = Math.min(...distances.map((d) => d.dist));
+    const atMinDist = distances.filter((d) => d.dist === minDist).map((d) => d.homeKey);
+    const tiedAtMin = atMinDist.length > 1 ? atMinDist : [];
+
+    const reachingHomes = homeKeyList.filter((homeKey) => {
+      const { dist } = distances.find((d) => d.homeKey === homeKey);
+      if (dist === 1) return true;
+      if (homePaths.get(homeKey).includes(key)) return true;
+      return tiedAtMin.includes(homeKey);
     });
     if (reachingHomes.length === 0) return;
 
@@ -139,12 +161,8 @@ function computeHomeSlices(board, homeKeys, rings) {
   });
 
   homeKeyList.forEach((homeKey) => {
-    const home = parseKey(homeKey);
-    const dq = home.q / rings;
-    const dr = home.r / rings;
-    const pathKeys = [keyFor(dq * 2, dr * 2), keyFor(dq * 1, dr * 1)];
     let penalty = 0;
-    pathKeys.forEach((pathKey) => {
+    homePaths.get(homeKey).forEach((pathKey) => {
       const tile = board.get(pathKey);
       if (!tile) return;
       if (tile.anomalies.includes("supernova")) penalty += SUPERNOVA_PATH_PENALTY;
