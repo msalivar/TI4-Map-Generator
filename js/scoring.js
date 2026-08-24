@@ -29,6 +29,7 @@ const NAMED_LEGENDARY_VALUES = {
 };
 const SUPERNOVA_PATH_PENALTY = 2;
 const NEBULA_PATH_PENALTY = 1;
+const SLICE_RADIUS = 2;
 
 function legendaryValue(planet) {
   return NAMED_LEGENDARY_VALUES[planet.name] ?? DEFAULT_LEGENDARY_VALUE;
@@ -112,7 +113,7 @@ function computeHomeSlices(board, homeKeys, rings) {
     const { q, r } = parseKey(key);
     const reachingHomes = homeKeyList.filter((homeKey) => {
       const home = parseKey(homeKey);
-      return hexDistance(q, r, home.q, home.r) <= 2;
+      return hexDistance(q, r, home.q, home.r) <= SLICE_RADIUS;
     });
     if (reachingHomes.length === 0) return;
 

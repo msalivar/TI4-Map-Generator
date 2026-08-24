@@ -32,8 +32,12 @@
   const TECH_ORDER = ["propulsion", "biotic", "cybernetic", "warfare"];
   const TECH_LETTERS = { propulsion: "B", biotic: "G", cybernetic: "Y", warfare: "R" };
 
+  function orderedTechTypes(techTypes) {
+    return TECH_ORDER.flatMap((type) => techTypes.filter((t) => t === type));
+  }
+
   function techLettersFor(techTypes) {
-    return TECH_ORDER.flatMap((type) => techTypes.filter((t) => t === type).map(() => TECH_LETTERS[type])).join("");
+    return orderedTechTypes(techTypes).map((type) => TECH_LETTERS[type]).join("");
   }
 
   function formatScore(n) {
@@ -286,10 +290,17 @@
     resInfLabel.appendChild(infSpan);
     g.appendChild(resInfLabel);
 
-    const techLetters = techLettersFor(breakdown.techTypes);
-    if (techLetters) {
+    // Colored per-letter (matching TECH_SWATCH_COLORS) rather than plain
+    // text -- the resources/influence line above already uses "R" for
+    // Resources, so an uncolored "R" here (Warfare) would be ambiguous.
+    const techTypesOrdered = orderedTechTypes(breakdown.techTypes);
+    if (techTypesOrdered.length) {
       const techLabel = svgEl("text", { x, y: y + 28, class: "hex-sublabel" });
-      techLabel.textContent = techLetters;
+      techTypesOrdered.forEach((type) => {
+        const letterSpan = svgEl("tspan", { fill: TECH_SWATCH_COLORS[type] });
+        letterSpan.textContent = TECH_LETTERS[type];
+        techLabel.appendChild(letterSpan);
+      });
       g.appendChild(techLabel);
     }
   }
