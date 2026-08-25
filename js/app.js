@@ -84,8 +84,17 @@
   };
 
   function tileMatchesFilters(tile) {
-    if (filterState.trait.size && !tile.planets.some((p) => p.traits.some((t) => filterState.trait.has(t)))) return false;
-    if (filterState.tech.size && !tile.planets.some((p) => p.techs.some((t) => filterState.tech.has(t)))) return false;
+    // Every checked box (within a category and across categories) must be
+    // satisfied -- e.g. checking both Cultural and Industrial only shows
+    // tiles that have a planet of each, not tiles with either.
+    if (filterState.trait.size) {
+      const tileTraits = new Set(tile.planets.flatMap((p) => p.traits));
+      for (const t of filterState.trait) { if (!tileTraits.has(t)) return false; }
+    }
+    if (filterState.tech.size) {
+      const tileTechs = new Set(tile.planets.flatMap((p) => p.techs));
+      for (const t of filterState.tech) { if (!tileTechs.has(t)) return false; }
+    }
     if (filterState.wormhole && tile.wormholes.length === 0) return false;
     if (filterState.station && !tile.planets.some((p) => p.station)) return false;
     if (filterState.legendary && !tile.planets.some((p) => p.legendary)) return false;
