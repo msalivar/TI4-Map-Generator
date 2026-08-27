@@ -110,19 +110,25 @@ function cubeRound(q, r, s) {
 // A home's "path to Mecatol" is the line of hexes between it and the
 // center, found via the standard cube-coordinate line-drawing algorithm
 // (lerp the home's cube coordinates toward the origin, round to the
-// nearest hex at each step). Every home sits exactly `rings` hexes from
-// center, so this always produces `rings - 1` intermediate tiles. For a
-// home that sits exactly on one of the 6 primary directions (true for
-// most layouts) this reduces to the same direction*2/direction*1 result
-// as the old formula; it also produces a sensible path for the
-// off-axis homes some player-count layouts use to spread more homes
-// around the same ring (see data/map-layouts.js).
-function homePathTiles(homeKey, rings) {
+// nearest hex at each step). The loop bound is the home's own distance
+// from center (not the board's `rings`) -- most homes sit exactly
+// `rings` hexes out, but a few real layouts (see data/map-layouts.js,
+// e.g. 3-Player Settlers, 7-Player Alternate) place some homes closer
+// in on a larger-ringed board, and using `rings` there would produce a
+// duplicated trailing key. Using the true distance always yields
+// exactly `homeDistance - 1` distinct intermediate tiles. For a home
+// that sits exactly on one of the 6 primary directions (true for most
+// layouts) this reduces to the same direction*2/direction*1 result as
+// the old formula; it also produces a sensible path for the off-axis
+// homes some player-count layouts use to spread more homes around the
+// same ring.
+function homePathTiles(homeKey) {
   const home = parseKey(homeKey);
   const homeS = -home.q - home.r;
+  const homeDistance = Math.max(Math.abs(home.q), Math.abs(home.r), Math.abs(homeS));
   const path = [];
-  for (let i = 1; i < rings; i++) {
-    const t = i / rings;
+  for (let i = 1; i < homeDistance; i++) {
+    const t = i / homeDistance;
     const rounded = cubeRound(home.q * (1 - t), home.r * (1 - t), homeS * (1 - t));
     path.push(keyFor(rounded.q, rounded.r));
   }
@@ -160,7 +166,7 @@ function computeHomeSlices(board, homeKeys, rings) {
       tiles: [],
     }]),
   );
-  const homePaths = new Map(homeKeyList.map((homeKey) => [homeKey, homePathTiles(homeKey, rings)]));
+  const homePaths = new Map(homeKeyList.map((homeKey) => [homeKey, homePathTiles(homeKey)]));
 
   board.forEach((tile, key) => {
     const { q, r } = parseKey(key);
