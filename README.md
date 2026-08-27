@@ -24,6 +24,9 @@ This is a first pass, built to be easy to extend. It currently supports:
 - "Randomize empty tiles" to quickly fill the rest of the board.
 - Export the board as a PNG image, or as a JSON file you can re-import
   later to keep editing.
+- "Copy share link" — a URL that encodes the whole map (layout, tiles,
+  enabled expansions) in its hash, so it works on static hosting. Opening
+  such a link loads the map without touching your autosaved board.
 - Autosaves your in-progress map to the browser's local storage.
 
 ### Not yet built (ideas for later)
@@ -34,7 +37,6 @@ This is a first pass, built to be easy to extend. It currently supports:
   wormholes, and anomalies evenly like the real game setup rules.
 - Prophecy of Kings / other expansion tiles, legendary planets, and
   hyperlane tiles.
-- Shareable map links (currently JSON export/import only).
 - Faction-specific home systems instead of a generic "HOME" slot.
 
 ## Running it
