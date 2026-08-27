@@ -2,13 +2,21 @@
  * TI4 Map Generator — app logic
  */
 (function () {
-  const RINGS = 3; // standard 6-player-sized board (37 hexes)
   const STORAGE_KEY = "ti4-map-generator-state-v1";
+  const DEFAULT_LAYOUT_KEY = "6p-standard";
 
-  const cells = generateHexRings(RINGS);
-  const mapStringCells = generateMapStringOrder(RINGS);
-  const homeKeys = new Set(homeSlotKeys(RINGS));
-  const keyToCell = new Map(cells.map((c) => [keyFor(c.q, c.r), c]));
+  // Board shape -- rings/cells/homes/decorative-hyperlane-slots -- is
+  // derived from the selected MAP_LAYOUTS entry via applyLayout()
+  // (defined below). These start undefined; init() calls applyLayout()
+  // exactly once before the first render, either with the saved
+  // layout (via loadFromObject) or the default.
+  let currentLayout;
+  let RINGS;
+  let cells;
+  let mapStringCells;
+  let homeKeys;
+  let hyperlaneKeys;
+  let keyToCell;
   const DRAG_THRESHOLD = 6;
 
   /** @type {Map<string, object>} key "q,r" -> placed tile object (or undefined) */
@@ -18,7 +26,34 @@
   let selectedPoolKey = null;
   /** keys of board tiles the user has locked against click-remove/drag/shuffle */
   let lockedKeys = new Set();
-  let playerNames = ["Player 1", "Player 2", "Player 3", "Player 4", "Player 5", "Player 6"];
+  let playerNames = [];
+
+  // Rebuilds every piece of board-shape state for `layout` (a MAP_LAYOUTS
+  // entry) -- called once at startup (via init(), see below) and again
+  // any time the user picks a different layout from the dropdown or a
+  // saved board is loaded. playerNames always resets to plain
+  // "Player N" defaults sized to the new layout's home count -- there's
+  // no UI for custom player names today, so there's nothing to preserve.
+  function applyLayout(layout) {
+    currentLayout = layout;
+    RINGS = layout.rings;
+    cells = generateHexRings(RINGS);
+    mapStringCells = generateMapStringOrder(RINGS);
+    homeKeys = new Set(layout.homeKeys);
+    hyperlaneKeys = new Set(layout.hyperlaneKeys);
+    keyToCell = new Map(cells.map((c) => [keyFor(c.q, c.r), c]));
+    playerNames = Array.from({ length: layout.homeKeys.length }, (_, i) => `Player ${i + 1}`);
+    if (layoutSelect) layoutSelect.value = layout.key;
+  }
+
+  function renderLayoutSelectOptions() {
+    const playerCounts = [...new Set(MAP_LAYOUTS.map((l) => l.playerCount))].sort((a, b) => a - b);
+    layoutSelect.innerHTML = playerCounts.map((count) => {
+      const layoutsForCount = MAP_LAYOUTS.filter((l) => l.playerCount === count);
+      const options = layoutsForCount.map((l) => `<option value="${l.key}">${l.label}</option>`).join("");
+      return `<optgroup label="${count} Players">${options}</optgroup>`;
+    }).join("");
+  }
   const TILE_SETS = [
     { key: "pok", label: "Prophecy of Kings" },
     { key: "thunders-edge", label: "Thunder's Edge" },
@@ -146,6 +181,7 @@
   const optMaxTraitGap = document.getElementById("opt-max-trait-gap");
   const traitGapLabel = document.getElementById("trait-gap-label");
   const optAvoidAdjacentAnomalies = document.getElementById("opt-avoid-adjacent-anomalies");
+  const layoutSelect = document.getElementById("layout-select");
 
   const BLUE_PER_PLAYER = 3; // matches the "Recommended: 3 blue / 2 red per player" hint in index.html
   const MAX_WORMHOLES = 8;
@@ -1385,7 +1421,7 @@
   function serialize() {
     return {
       version: 1,
-      rings: RINGS,
+      layoutKey: currentLayout.key,
       playerNames,
       enabledSets: [...enabledSets],
       lockedKeys: [...lockedKeys],
@@ -1403,9 +1439,11 @@
 
   function loadFromObject(data) {
     if (!data || !Array.isArray(data.placements)) return;
+    const layout = MAP_LAYOUTS.find((l) => l.key === data.layoutKey) || MAP_LAYOUTS.find((l) => l.key === DEFAULT_LAYOUT_KEY);
+    applyLayout(layout);
     pool = new Map(TILE_POOL.map((t) => [poolKey(t), t]));
     board = new Map();
-    if (Array.isArray(data.playerNames)) playerNames = data.playerNames;
+    if (Array.isArray(data.playerNames) && data.playerNames.length === homeKeys.size) playerNames = data.playerNames;
     if (Array.isArray(data.enabledSets)) enabledSets = new Set(data.enabledSets);
     data.placements.forEach((p) => {
       const match = [...pool.values()].find((t) => t.id === p.tileId && t.back === p.back && t.name === p.name);
@@ -1631,6 +1669,20 @@
       btnTogglePalette.title = collapsed ? "Expand tile selector" : "Collapse tile selector";
     });
 
+    layoutSelect.addEventListener("change", () => {
+      const layout = MAP_LAYOUTS.find((l) => l.key === layoutSelect.value);
+      if (board.size > 0 && !window.confirm("Switching layouts will clear the current board. Continue?")) {
+        layoutSelect.value = currentLayout.key;
+        return;
+      }
+      applyLayout(layout);
+      board = new Map();
+      pool = new Map(TILE_POOL.map((t) => [poolKey(t), t]));
+      selectedPoolKey = null;
+      lockedKeys = new Set();
+      persist();
+      renderAll();
+    });
     document.getElementById("btn-shuffle-unlocked").addEventListener("click", shuffleUnlocked);
     document.getElementById("btn-balance").addEventListener("click", balanceUnlocked);
     document.getElementById("btn-lock-tool").addEventListener("click", () => setLockToolActive(!lockToolActive));
@@ -1655,6 +1707,8 @@
       if (str) parseMapString(str);
     });
 
+    renderLayoutSelectOptions();
+
     let saved = null;
     try {
       saved = JSON.parse(localStorage.getItem(STORAGE_KEY));
@@ -1665,6 +1719,7 @@
     if (saved) {
       loadFromObject(saved);
     } else {
+      applyLayout(MAP_LAYOUTS.find((l) => l.key === DEFAULT_LAYOUT_KEY));
       renderAll();
     }
   }
