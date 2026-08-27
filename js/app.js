@@ -1847,6 +1847,20 @@
       const str = window.prompt("Paste a map string:");
       if (str) parseMapString(str);
     });
+    document.getElementById("btn-copy-share-link").addEventListener("click", () => {
+      const url = buildShareURL();
+      const btn = document.getElementById("btn-copy-share-link");
+      const original = btn.textContent;
+      const showCopied = () => {
+        btn.textContent = "✅ Copied!";
+        setTimeout(() => { btn.textContent = original; }, 1500);
+      };
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(url).then(showCopied, () => window.prompt("Copy this share link:", url));
+      } else {
+        window.prompt("Copy this share link:", url);
+      }
+    });
 
     renderLayoutSelectOptions();
     renderTileSetToggles();
