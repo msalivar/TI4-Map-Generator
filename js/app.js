@@ -1535,14 +1535,15 @@
       .join(" ");
   }
 
-  function parseMapString(str) {
-    const tokens = str.trim().split(/\s+/).filter(Boolean);
-    const rest = mapStringCells;
-    if (tokens.length !== rest.length) {
-      alert(`Expected ${rest.length} numbers (one per non-Mecatol hex), got ${tokens.length}.`);
-      return;
-    }
-
+  // Resolve an already-correct-length array of map-string tokens against
+  // the tile pool and apply them to the board. Returns an array of the
+  // tokens that could not be resolved (unknown id, set not enabled, id
+  // reused within the string, or a tile aimed at a home/hyperlane slot)
+  // -- empty on full success.
+  //   partial:false -> all-or-nothing; any bad token aborts, board untouched.
+  //   partial:true  -> place whatever resolves, skip (and still return) the rest.
+  //   persist:true  -> call persist() after a successful apply.
+  function applyMapTokens(tokens, { persist: doPersist = false, partial = false } = {}) {
     const tilesById = new Map();
     TILE_POOL.forEach((t) => {
       if (!tilesById.has(t.id)) tilesById.set(t.id, []);
@@ -1552,14 +1553,14 @@
 
     const newBoard = new Map();
     const usedKeys = new Set();
-    let badToken = null;
+    const badTokens = [];
 
-    rest.forEach((c, i) => {
+    mapStringCells.forEach((c, i) => {
       const token = tokens[i];
       if (token === "0" || token === "-1") return;
       const key = keyFor(c.q, c.r);
       if (homeKeys.has(key) || hyperlaneKeys.has(key)) {
-        badToken = token;
+        badTokens.push(token);
         return;
       }
       const id = Number(token);
@@ -1569,24 +1570,34 @@
         .sort((a, b) => (setPriority[a.set] ?? 9) - (setPriority[b.set] ?? 9));
       const match = candidates[0];
       if (!Number.isFinite(id) || !match) {
-        badToken = token;
+        badTokens.push(token);
         return;
       }
       usedKeys.add(poolKey(match));
       newBoard.set(key, match);
     });
 
-    if (badToken !== null) {
-      alert(`Could not import that map string — tile "${badToken}" isn't recognized, isn't enabled, or is used twice.`);
-      return;
-    }
+    if (badTokens.length && !partial) return badTokens;
 
     board = newBoard;
     pool = new Map(TILE_POOL.filter((t) => !usedKeys.has(poolKey(t))).map((t) => [poolKey(t), t]));
     selectedPoolKey = null;
     lockedKeys = new Set();
-    persist();
+    if (doPersist) persist();
     renderAll();
+    return badTokens;
+  }
+
+  function parseMapString(str) {
+    const tokens = str.trim().split(/\s+/).filter(Boolean);
+    if (tokens.length !== mapStringCells.length) {
+      alert(`Expected ${mapStringCells.length} numbers (one per non-Mecatol hex), got ${tokens.length}.`);
+      return;
+    }
+    const bad = applyMapTokens(tokens, { persist: true, partial: false });
+    if (bad.length) {
+      alert(`Could not import that map string — tile "${bad[0]}" isn't recognized, isn't enabled, or is used twice.`);
+    }
   }
 
   // The board's colors/fonts come from css/style.css via class names.
