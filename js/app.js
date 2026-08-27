@@ -1849,19 +1849,21 @@
     });
 
     renderLayoutSelectOptions();
-
-    let saved = null;
-    try {
-      saved = JSON.parse(localStorage.getItem(STORAGE_KEY));
-    } catch (e) {
-      saved = null;
-    }
     renderTileSetToggles();
-    if (saved) {
-      loadFromObject(saved);
-    } else {
-      applyLayout(MAP_LAYOUTS.find((l) => l.key === DEFAULT_LAYOUT_KEY));
-      renderAll();
+
+    if (!loadFromHash()) {
+      let saved = null;
+      try {
+        saved = JSON.parse(localStorage.getItem(STORAGE_KEY));
+      } catch (e) {
+        saved = null;
+      }
+      if (saved) {
+        loadFromObject(saved);
+      } else {
+        applyLayout(MAP_LAYOUTS.find((l) => l.key === DEFAULT_LAYOUT_KEY));
+        renderAll();
+      }
     }
   }
 
