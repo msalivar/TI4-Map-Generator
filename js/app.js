@@ -61,6 +61,27 @@
   ];
   let enabledSets = new Set(TILE_SETS.map((s) => s.key));
 
+  // Short codes for the optional expansion sets in a shared-map URL's
+  // "s=" param. "base" is implicit and never encoded. Single source of
+  // truth for both directions -- see buildShareURL()/loadFromHash().
+  const SET_CODES = { p: "pok", t: "thunders-edge", d: "discordant-stars" };
+
+  function encodeSetsParam(setLike) {
+    const enabled = setLike instanceof Set ? setLike : new Set(setLike);
+    return Object.keys(SET_CODES)
+      .filter((code) => enabled.has(SET_CODES[code]))
+      .join(",");
+  }
+
+  function decodeSetsParam(str) {
+    return new Set(
+      String(str)
+        .split(",")
+        .map((code) => SET_CODES[code])
+        .filter(Boolean)
+    );
+  }
+
   const TRAIT_COLORS = { cultural: "#4d7bd1", industrial: "#3fa34d", hazardous: "#d9542f" };
   const TECH_SWATCH_COLORS = { warfare: "#e0524f", propulsion: "#4d7bd1", biotic: "#3fa34d", cybernetic: "#e0b93f" };
   // Order controls how repeated tech-skip letters group on a home tile
