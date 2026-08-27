@@ -228,6 +228,8 @@
         drawTile(g, x, y, MECATOL_REX, "mecatol", key, false);
       } else if (homeKeys.has(key)) {
         drawHomeSlot(g, x, y, key, homeSlices.get(key));
+      } else if (hyperlaneKeys.has(key)) {
+        drawHyperlaneSlot(g, x, y, key);
       } else if (board.has(key)) {
         const tile = board.get(key);
         drawTile(g, x, y, tile, tile.back, key, true);
@@ -351,6 +353,37 @@
         ${Object.entries(traitCounts).map(([k, v]) => item(TRAIT_COLORS[k], v, TRAIT_LABELS[k])).join("")}
       </div>
     `;
+  }
+
+  // Fixed, non-interactive decoration for a layout's designated
+  // hyperlane slots -- no click/drag listeners at all (unlike
+  // drawEmpty/drawTile), so it can never be placed into, dragged from,
+  // or locked. The two curves are a generic hyperlane look (a pair of
+  // opposite-edge-midpoint connectors, styled like real hyperlane tile
+  // art) rather than any specific official connection pattern -- this
+  // tool never simulates ship-movement adjacency through hyperlanes, so
+  // every hyperlane slot on every layout uses this same fixed graphic.
+  function drawHyperlaneSlot(g, x, y, key) {
+    const poly = svgEl("polygon", {
+      points: hexPolygonPoints(x, y),
+      class: "hex hyperlane",
+      "data-key": key,
+    });
+    g.appendChild(poly);
+
+    const lineGroup = svgEl("g", { "pointer-events": "none" });
+    const corners = [0, 1, 2, 3, 4, 5].map((i) => hexCorner(x, y, i));
+    const midpoint = (a, b) => ({ x: (a[0] + b[0]) / 2, y: (a[1] + b[1]) / 2 });
+    const edgeMidpoints = corners.map((c, i) => midpoint(c, corners[(i + 1) % 6]));
+    [[0, 3], [1, 4]].forEach(([a, b]) => {
+      const p1 = edgeMidpoints[a];
+      const p2 = edgeMidpoints[b];
+      lineGroup.appendChild(svgEl("path", {
+        d: `M ${p1.x} ${p1.y} Q ${x} ${y} ${p2.x} ${p2.y}`,
+        class: "hyperlane-line",
+      }));
+    });
+    g.appendChild(lineGroup);
   }
 
   function drawEmpty(g, x, y, key) {
@@ -917,6 +950,7 @@
   function isValidDropTarget(targetKey, sourceKey) {
     if (!targetKey || targetKey === sourceKey) return false;
     if (homeKeys.has(targetKey)) return false;
+    if (hyperlaneKeys.has(targetKey)) return false;
     if (lockedKeys.has(targetKey)) return false;
     const cell = keyToCell.get(targetKey);
     if (!cell || cell.ring === 0) return false;
@@ -1145,7 +1179,10 @@
 
   function emptySlotKeys() {
     return cells
-      .filter((c) => c.ring > 0 && !homeKeys.has(keyFor(c.q, c.r)) && !board.has(keyFor(c.q, c.r)))
+      .filter((c) => {
+        const key = keyFor(c.q, c.r);
+        return c.ring > 0 && !homeKeys.has(key) && !hyperlaneKeys.has(key) && !board.has(key);
+      })
       .map((c) => keyFor(c.q, c.r));
   }
 
