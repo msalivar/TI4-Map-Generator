@@ -1536,6 +1536,11 @@
     rest.forEach((c, i) => {
       const token = tokens[i];
       if (token === "0" || token === "-1") return;
+      const key = keyFor(c.q, c.r);
+      if (homeKeys.has(key) || hyperlaneKeys.has(key)) {
+        badToken = token;
+        return;
+      }
       const id = Number(token);
       const candidates = (tilesById.get(id) || [])
         .filter((t) => t.set === "base" || enabledSets.has(t.set))
@@ -1547,7 +1552,7 @@
         return;
       }
       usedKeys.add(poolKey(match));
-      newBoard.set(keyFor(c.q, c.r), match);
+      newBoard.set(key, match);
     });
 
     if (badToken !== null) {
