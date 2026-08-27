@@ -1606,6 +1606,67 @@
     }
   }
 
+  // A shareable URL that reproduces the current board with no backend:
+  // the map string, the active layout key, and the enabled expansion sets
+  // all live in the URL hash. Parsed back by loadFromHash() on page load.
+  function buildShareURL() {
+    return (
+      location.origin +
+      location.pathname +
+      "#l=" + currentLayout.key +
+      "&m=" + serializeMapString().split(" ").join(",") +
+      "&s=" + encodeSetsParam(enabledSets)
+    );
+  }
+
+  function parseHashParams() {
+    return new Map(
+      location.hash
+        .replace(/^#/, "")
+        .split("&")
+        .filter(Boolean)
+        .map((pair) => {
+          const eq = pair.indexOf("=");
+          return eq === -1 ? [pair, ""] : [pair.slice(0, eq), pair.slice(eq + 1)];
+        })
+    );
+  }
+
+  // If the page was opened from a buildShareURL() link, set up the board
+  // from the hash and return true (init() then skips localStorage). Any
+  // problem (no "m=", wrong tile count) returns false so the normal
+  // localStorage path runs instead. Never alert()s -- a broken shared
+  // link must not pop a dialog on page load.
+  function loadFromHash() {
+    const params = parseHashParams();
+    if (!params.has("m")) return false;
+
+    // Layout first: it sets mapStringCells, which the length check needs.
+    // Same resolution + fallback as loadFromObject().
+    const layout =
+      MAP_LAYOUTS.find((l) => l.key === params.get("l")) ||
+      MAP_LAYOUTS.find((l) => l.key === DEFAULT_LAYOUT_KEY);
+    applyLayout(layout);
+
+    const tokens = params.get("m").split(",").filter(Boolean);
+    if (tokens.length !== mapStringCells.length) {
+      console.warn(
+        `Ignoring shared map URL: layout "${layout.key}" expects ${mapStringCells.length} tiles, got ${tokens.length}.`
+      );
+      return false;
+    }
+
+    if (params.has("s")) enabledSets = decodeSetsParam(params.get("s"));
+    renderTileSetToggles();
+
+    shareMode = true;
+    const bad = applyMapTokens(tokens, { persist: false, partial: true });
+    if (bad.length) {
+      console.warn(`Shared map URL: ${bad.length} tile(s) could not be placed:`, bad.join(", "));
+    }
+    return true;
+  }
+
   // The board's colors/fonts come from css/style.css via class names.
   // A cloned SVG rendered outside the document (as a standalone image)
   // has no access to that stylesheet, so we inline the relevant rules
