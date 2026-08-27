@@ -143,9 +143,8 @@ function homePathTiles(homeKey) {
  * A tile's value splits evenly across every home whose slice it's in,
  * if more than one. On top of that, a home's total takes a penalty if
  * a supernova/nebula sits on its fixed path to Mecatol Rex. `board` is
- * a Map<"q,r", tile>; `homeKeys` an iterable of "q,r" strings; `rings`
- * the board's ring count. Returns a Map<homeKey, breakdown>, where
- * breakdown is:
+ * a Map<"q,r", tile>; `homeKeys` an iterable of "q,r" strings.
+ * Returns a Map<homeKey, breakdown>, where breakdown is:
  *   { total, optimalResources, optimalInfluence, techTypes,
  *     categoryTotals: { base, tech, legendary, station, wormhole, entropicScar },
  *     pathPenalty, tiles: [{ tile, contribution, splitWith: [otherHomeKey, ...] }] }
@@ -153,7 +152,7 @@ function homePathTiles(homeKey) {
  * (each tile's share applied the same way as total), for a per-home
  * summary without walking `tiles` -- see app.js's showHomeTooltip().
  */
-function computeHomeSlices(board, homeKeys, rings) {
+function computeHomeSlices(board, homeKeys) {
   const homeKeyList = [...homeKeys];
   const results = new Map(
     homeKeyList.map((homeKey) => [homeKey, {

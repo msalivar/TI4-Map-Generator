@@ -181,7 +181,7 @@
     defs.appendChild(clipPath);
     svg.appendChild(defs);
 
-    const homeSlices = computeHomeSlices(board, homeKeys, RINGS);
+    const homeSlices = computeHomeSlices(board, homeKeys);
 
     cells.forEach((c) => {
       const key = keyFor(c.q, c.r);
@@ -937,7 +937,7 @@
       board.set(keyB, tileA);
     };
 
-    let currentGap = sliceBalanceGap(computeHomeSlices(board, homeKeys, RINGS));
+    let currentGap = sliceBalanceGap(computeHomeSlices(board, homeKeys));
     let iterations = 0;
     let improved = true;
 
@@ -954,7 +954,7 @@
       for (const [keyA, keyB] of pairs) {
         iterations++;
         swapTiles(keyA, keyB);
-        const newGap = sliceBalanceGap(computeHomeSlices(board, homeKeys, RINGS));
+        const newGap = sliceBalanceGap(computeHomeSlices(board, homeKeys));
         if (newGap < currentGap) {
           currentGap = newGap;
           improved = true;
