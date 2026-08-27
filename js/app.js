@@ -1499,6 +1499,8 @@
     .hex.red { fill: #5a2733; }
     .hex.home { fill: #2e3a2a; }
     .hex.mecatol { fill: #4a3a1a; }
+    .hex.hyperlane { fill: #241f38; }
+    .hyperlane-line { fill: none; stroke: #8fa8ff; stroke-width: 2.5; }
     .hex-lock-outline { fill: none; stroke: #ff2d2d; stroke-width: 5; }
     .hex-label { fill: #e8ecf7; font-size: 11px; font-family: "Segoe UI", system-ui, sans-serif; text-anchor: middle; }
     .hex-id-label { font-size: 8px; opacity: 0.7; }
