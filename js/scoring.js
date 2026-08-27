@@ -91,15 +91,42 @@ function parseKey(key) {
   return { q, r };
 }
 
-// Each home sits at direction * rings for one of the 6 primary axial
-// directions (see generateHexRings), so its fixed 2-tile path to
-// Mecatol is always direction*2 and direction*1 -- no branching, since
-// homes sit exactly on-axis from the center.
+// Rounds a fractional cube coordinate (q, r, s) to the nearest actual
+// hex, correcting whichever component was rounded furthest off so
+// q + r + s stays exactly 0 (standard cube-coordinate rounding).
+function cubeRound(q, r, s) {
+  let rq = Math.round(q);
+  let rr = Math.round(r);
+  let rs = Math.round(s);
+  const qDiff = Math.abs(rq - q);
+  const rDiff = Math.abs(rr - r);
+  const sDiff = Math.abs(rs - s);
+  if (qDiff > rDiff && qDiff > sDiff) rq = -rr - rs;
+  else if (rDiff > sDiff) rr = -rq - rs;
+  else rs = -rq - rr;
+  return { q: rq, r: rr };
+}
+
+// A home's "path to Mecatol" is the line of hexes between it and the
+// center, found via the standard cube-coordinate line-drawing algorithm
+// (lerp the home's cube coordinates toward the origin, round to the
+// nearest hex at each step). Every home sits exactly `rings` hexes from
+// center, so this always produces `rings - 1` intermediate tiles. For a
+// home that sits exactly on one of the 6 primary directions (true for
+// most layouts) this reduces to the same direction*2/direction*1 result
+// as the old formula; it also produces a sensible path for the
+// off-axis homes some player-count layouts use to spread more homes
+// around the same ring (see data/map-layouts.js).
 function homePathTiles(homeKey, rings) {
   const home = parseKey(homeKey);
-  const dq = home.q / rings;
-  const dr = home.r / rings;
-  return [keyFor(dq * 2, dr * 2), keyFor(dq * 1, dr * 1)];
+  const homeS = -home.q - home.r;
+  const path = [];
+  for (let i = 1; i < rings; i++) {
+    const t = i / rings;
+    const rounded = cubeRound(home.q * (1 - t), home.r * (1 - t), homeS * (1 - t));
+    path.push(keyFor(rounded.q, rounded.r));
+  }
+  return path;
 }
 
 /**
