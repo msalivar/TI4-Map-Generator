@@ -28,6 +28,11 @@
   let lockedKeys = new Set();
   let playerNames = [];
 
+  // Set true by loadFromHash() when the page was opened from a shared-map
+  // URL. While set, persist() is a no-op so this tab never overwrites the
+  // single shared localStorage autosave slot that other tabs rely on.
+  let shareMode = false;
+
   // Rebuilds every piece of board-shape state for `layout` (a MAP_LAYOUTS
   // entry) -- called once at startup (via init(), see below) and again
   // any time the user picks a different layout from the dropdown or a
@@ -1488,6 +1493,7 @@
   }
 
   function persist() {
+    if (shareMode) return;
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(serialize()));
     } catch (e) {
