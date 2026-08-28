@@ -255,7 +255,7 @@
       } else if (homeKeys.has(key)) {
         drawHomeSlot(g, x, y, key, homeSlices.get(key));
       } else if (hyperlaneKeys.has(key)) {
-        drawHyperlaneSlot(g, x, y, key);
+        drawHyperlaneSlot(g, x, y, key, c);
       } else if (board.has(key)) {
         const tile = board.get(key);
         drawTile(g, x, y, tile, tile.back, key, true);
@@ -381,18 +381,102 @@
     `;
   }
 
-  // Places one of the 18 real HYPERLANE_TILES faces (data/hyperlane-
-  // tiles.js) at a layout's hyperlane-designated cell, cycling through
-  // the catalog in order by the cell's position within the current
-  // layout's own hyperlaneKeys list -- not chosen or rotated to match
-  // its neighbors. This app never simulates ship-movement adjacency
-  // through hyperlanes, so which exact real face lands at which
-  // position is cosmetic; using this real catalog at its own printed
-  // orientation is what matters (previous attempts at computing
-  // "correct" per-position connections produced misleading results,
-  // since real hyperlane tiles include multi-lane hub shapes like
-  // 87A/88A that don't reduce to simple neighbor-to-neighbor pairing).
-  function drawHyperlaneSlot(g, x, y, key) {
+  // The 6 standard axial neighbor offsets, used to find a hyperlane
+  // tile's true grid-adjacent neighbors (not board-ring-tangential
+  // ones -- some layouts, like the "Warp" variants, cluster their
+  // hyperlane tiles across several different board rings rather than
+  // an arc on one ring, so true hex adjacency is the only relationship
+  // that works for both shapes).
+  const HEX_NEIGHBOR_DIRS = [
+    { q: 1, r: 0 }, { q: 1, r: -1 }, { q: 0, r: -1 },
+    { q: -1, r: 0 }, { q: -1, r: 1 }, { q: 0, r: 1 },
+  ];
+
+  // The two cells a hyperlane tile's primary lane should connect, in
+  // priority order: two hyperlane-neighbors (a real mid-chain segment);
+  // one hyperlane-neighbor (a chain's dead end -- the other side points
+  // at the reflection straight through the tile, so the lane continues
+  // outward rather than stopping short); no hyperlane-neighbor (an
+  // isolated tile, no chain to follow -- falls back to the tile's
+  // board-ring-tangential neighbors, still real adjacent cells).
+  function hyperlaneConnectionCells(cell) {
+    const neighbors = HEX_NEIGHBOR_DIRS.map((d) => ({ q: cell.q + d.q, r: cell.r + d.r }));
+    const hyperlaneNeighbors = neighbors.filter((n) => hyperlaneKeys.has(keyFor(n.q, n.r)));
+    if (hyperlaneNeighbors.length >= 2) return hyperlaneNeighbors.slice(0, 2);
+    if (hyperlaneNeighbors.length === 1) {
+      const only = hyperlaneNeighbors[0];
+      const reflected = { q: cell.q - (only.q - cell.q), r: cell.r - (only.r - cell.r) };
+      return [only, reflected];
+    }
+    const ringSize = 6 * cell.ring;
+    const prevIdx = (cell.indexInRing - 1 + ringSize) % ringSize;
+    const nextIdx = (cell.indexInRing + 1) % ringSize;
+    const ringCells = cells.filter((c) => c.ring === cell.ring);
+    return [
+      ringCells.find((c) => c.indexInRing === prevIdx),
+      ringCells.find((c) => c.indexInRing === nextIdx),
+    ];
+  }
+
+  // Which of the tile's 6 edges (0-5, matching hexCorner()'s numbering)
+  // most closely faces the direction from (x, y) toward neighbor cell `n`.
+  function closestEdgeIndex(x, y, edgeMidpoints, n) {
+    const npx = axialToPixel(n.q, n.r);
+    const dx = npx.x - x;
+    const dy = npx.y - y;
+    let bestIdx = 0;
+    let bestDot = -Infinity;
+    edgeMidpoints.forEach((em, i) => {
+      const dot = (em.x - x) * dx + (em.y - y) * dy;
+      if (dot > bestDot) {
+        bestDot = dot;
+        bestIdx = i;
+      }
+    });
+    return bestIdx;
+  }
+
+  // Every real (tile, lane) pair across the whole HYPERLANE_TILES
+  // catalog whose own lane spans the given edge-offset (2 = two edges
+  // apart, a "bent" lane; 3 = opposite edges, a "straight" lane -- the
+  // only two offsets any layout's real hyperlane connections ever
+  // need). A tile can appear multiple times here under different lanes
+  // (e.g. 87A's hub has lanes at both offsets), and multi-lane tiles'
+  // *other* lanes still render even though only one was matched here --
+  // that's authentic to how a real tile looks, not a bug.
+  function laneCandidatesForOffset(offset) {
+    const candidates = [];
+    HYPERLANE_TILES.forEach((tile) => {
+      tile.connections.forEach(([a, b]) => {
+        const off = Math.min(Math.abs(a - b), 6 - Math.abs(a - b));
+        if (off === offset) candidates.push({ tile, lane: [a, b] });
+      });
+    });
+    return candidates;
+  }
+  const HYPERLANE_STRAIGHT_LANES = laneCandidatesForOffset(3);
+  const HYPERLANE_BENT_LANES = laneCandidatesForOffset(2);
+
+  // The rotation (0-5) that lines a lane's two edges up with the real
+  // target edges -- tries both pairings, since either of the lane's
+  // edges could be the one that ends up matching `edgeA`.
+  function rotationForLane(lane, edgeA, edgeB) {
+    const [ca, cb] = lane;
+    const rot1 = ((edgeA - ca) % 6 + 6) % 6;
+    if ((cb + rot1) % 6 === edgeB) return rot1;
+    return ((edgeB - ca) % 6 + 6) % 6;
+  }
+
+  // Places a real HYPERLANE_TILES face (data/hyperlane-tiles.js) at a
+  // layout's hyperlane-designated cell: finds which of the tile's real
+  // neighbors it should visually connect to (hyperlaneConnectionCells),
+  // then picks any real tile with a lane matching that connection's
+  // shape (straight or bent) and rotates it to align -- rendering that
+  // tile's full real lane set (not just the matching lane), so a
+  // multi-lane hub like 87A/88A shows its other lanes too, same as the
+  // physical tile. Cycles through the matching candidates by the cell's
+  // position in the layout's hyperlaneKeys list for variety.
+  function drawHyperlaneSlot(g, x, y, key, cell) {
     const poly = svgEl("polygon", {
       points: hexPolygonPoints(x, y),
       class: "hex hyperlane",
@@ -404,13 +488,19 @@
     const midpoint = (a, b) => ({ x: (a[0] + b[0]) / 2, y: (a[1] + b[1]) / 2 });
     const edgeMidpoints = corners.map((c, i) => midpoint(c, corners[(i + 1) % 6]));
 
+    const connections = hyperlaneConnectionCells(cell);
+    const edgeA = closestEdgeIndex(x, y, edgeMidpoints, connections[0]);
+    const edgeB = closestEdgeIndex(x, y, edgeMidpoints, connections[1]);
+    const offset = Math.min(Math.abs(edgeA - edgeB), 6 - Math.abs(edgeA - edgeB));
+    const candidates = offset === 3 ? HYPERLANE_STRAIGHT_LANES : HYPERLANE_BENT_LANES;
     const slotIndex = currentLayout.hyperlaneKeys.indexOf(key);
-    const tile = HYPERLANE_TILES[slotIndex % HYPERLANE_TILES.length];
+    const { tile, lane } = candidates[slotIndex % candidates.length];
+    const rotation = rotationForLane(lane, edgeA, edgeB);
 
     const lineGroup = svgEl("g", { "pointer-events": "none" });
     tile.connections.forEach(([a, b]) => {
-      const p1 = edgeMidpoints[a];
-      const p2 = edgeMidpoints[b];
+      const p1 = edgeMidpoints[(a + rotation) % 6];
+      const p2 = edgeMidpoints[(b + rotation) % 6];
       lineGroup.appendChild(svgEl("path", {
         d: `M ${p1.x} ${p1.y} Q ${x} ${y} ${p2.x} ${p2.y}`,
         class: "hyperlane-line",
