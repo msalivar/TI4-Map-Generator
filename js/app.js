@@ -255,7 +255,7 @@
       } else if (homeKeys.has(key)) {
         drawHomeSlot(g, x, y, key, homeSlices.get(key));
       } else if (hyperlaneKeys.has(key)) {
-        drawHyperlaneSlot(g, x, y, key);
+        drawHyperlaneSlot(g, x, y, key, c);
       } else if (board.has(key)) {
         const tile = board.get(key);
         drawTile(g, x, y, tile, tile.back, key, true);
@@ -381,15 +381,33 @@
     `;
   }
 
-  // Fixed, non-interactive decoration for a layout's designated
-  // hyperlane slots -- no click/drag listeners at all (unlike
-  // drawEmpty/drawTile), so it can never be placed into, dragged from,
-  // or locked. The two curves are a generic hyperlane look (a pair of
-  // opposite-edge-midpoint connectors, styled like real hyperlane tile
-  // art) rather than any specific official connection pattern -- this
-  // tool never simulates ship-movement adjacency through hyperlanes, so
-  // every hyperlane slot on every layout uses this same fixed graphic.
-  function drawHyperlaneSlot(g, x, y, key) {
+  // Non-interactive decoration for a layout's designated hyperlane
+  // slots -- no click/drag listeners at all (unlike drawEmpty/drawTile),
+  // so it can never be placed into, dragged from, or locked. The single
+  // curve connects the two edges facing the tile's ring-neighbors (see
+  // ringNeighborCells() below), so it visually threads through the tile
+  // the same way a real hyperlane bridges its ring position -- not tied
+  // to any specific official connection pattern (this tool never
+  // simulates ship-movement adjacency through hyperlanes), just the
+  // actual local topology of each layout.
+  // The two cells immediately before/after `cell` in its own ring's
+  // traversal order (see generateHexRings()) -- consecutive indexInRing
+  // cells are always geometrically adjacent, including the wrap-around
+  // at the ring's start/end, so these are exactly `cell`'s two neighbors
+  // along the ring's circumference (as opposed to its radial neighbors
+  // toward/away from Mecatol).
+  function ringNeighborCells(cell) {
+    const ringSize = 6 * cell.ring;
+    const prevIdx = (cell.indexInRing - 1 + ringSize) % ringSize;
+    const nextIdx = (cell.indexInRing + 1) % ringSize;
+    const ringCells = cells.filter((c) => c.ring === cell.ring);
+    return [
+      ringCells.find((c) => c.indexInRing === prevIdx),
+      ringCells.find((c) => c.indexInRing === nextIdx),
+    ];
+  }
+
+  function drawHyperlaneSlot(g, x, y, key, cell) {
     const poly = svgEl("polygon", {
       points: hexPolygonPoints(x, y),
       class: "hex hyperlane",
@@ -401,14 +419,33 @@
     const corners = [0, 1, 2, 3, 4, 5].map((i) => hexCorner(x, y, i));
     const midpoint = (a, b) => ({ x: (a[0] + b[0]) / 2, y: (a[1] + b[1]) / 2 });
     const edgeMidpoints = corners.map((c, i) => midpoint(c, corners[(i + 1) % 6]));
-    [[0, 3], [1, 4]].forEach(([a, b]) => {
-      const p1 = edgeMidpoints[a];
-      const p2 = edgeMidpoints[b];
-      lineGroup.appendChild(svgEl("path", {
-        d: `M ${p1.x} ${p1.y} Q ${x} ${y} ${p2.x} ${p2.y}`,
-        class: "hyperlane-line",
-      }));
+
+    // A hyperlane tile visually bridges the gap along its ring, so its
+    // connector curve should point toward its two ring-neighbors (the
+    // tiles it's actually adjacent to and standing in for) rather than
+    // a fixed edge pair -- for each neighbor, pick whichever of the 6
+    // edge midpoints most closely faces that neighbor's real direction.
+    const neighbors = ringNeighborCells(cell);
+    const targets = neighbors.map((n) => {
+      const npx = axialToPixel(n.q, n.r);
+      const dx = npx.x - x;
+      const dy = npx.y - y;
+      let bestIdx = 0;
+      let bestDot = -Infinity;
+      edgeMidpoints.forEach((em, i) => {
+        const dot = (em.x - x) * dx + (em.y - y) * dy;
+        if (dot > bestDot) {
+          bestDot = dot;
+          bestIdx = i;
+        }
+      });
+      return edgeMidpoints[bestIdx];
     });
+
+    lineGroup.appendChild(svgEl("path", {
+      d: `M ${targets[0].x} ${targets[0].y} Q ${x} ${y} ${targets[1].x} ${targets[1].y}`,
+      class: "hyperlane-line",
+    }));
     g.appendChild(lineGroup);
   }
 
