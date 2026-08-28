@@ -96,6 +96,10 @@ function hexDistance(q1, r1, q2, r2) {
 /**
  * Standard 6-player TI4 layout: home systems sit on the 6 corner
  * positions of the outermost ring.
+ *
+ * No longer called by the app -- selectable player-count layouts now list
+ * their home positions literally in data/map-layouts.js. Kept for console
+ * debugging/reference (see CLAUDE.md on this file's top-level functions).
  */
 function homeSlotKeys(rings) {
   const cells = generateHexRings(rings);
