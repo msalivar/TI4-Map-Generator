@@ -381,22 +381,40 @@
     `;
   }
 
-  // Non-interactive decoration for a layout's designated hyperlane
-  // slots -- no click/drag listeners at all (unlike drawEmpty/drawTile),
-  // so it can never be placed into, dragged from, or locked. The single
-  // curve connects the two edges facing the tile's ring-neighbors (see
-  // ringNeighborCells() below), so it visually threads through the tile
-  // the same way a real hyperlane bridges its ring position -- not tied
-  // to any specific official connection pattern (this tool never
-  // simulates ship-movement adjacency through hyperlanes), just the
-  // actual local topology of each layout.
-  // The two cells immediately before/after `cell` in its own ring's
-  // traversal order (see generateHexRings()) -- consecutive indexInRing
-  // cells are always geometrically adjacent, including the wrap-around
-  // at the ring's start/end, so these are exactly `cell`'s two neighbors
-  // along the ring's circumference (as opposed to its radial neighbors
-  // toward/away from Mecatol).
-  function ringNeighborCells(cell) {
+  // The 6 standard axial neighbor offsets (same set generateHexRings()
+  // walks internally in hexgrid.js), used here to find a hyperlane
+  // tile's true grid-adjacent neighbors -- NOT its board-ring-tangential
+  // neighbors. Some layouts (e.g. the "Warp" variants) arrange their
+  // hyperlane tiles as a tight local cluster spanning several different
+  // board rings rather than an arc along one ring, so ring-tangential
+  // adjacency is the wrong relationship for those; true hex adjacency
+  // (which of the 6 real neighboring cells is also a hyperlane tile)
+  // works for both an arc-shaped patch and a multi-ring cluster alike.
+  const HEX_NEIGHBOR_DIRS = [
+    { q: 1, r: 0 }, { q: 1, r: -1 }, { q: 0, r: -1 },
+    { q: -1, r: 0 }, { q: -1, r: 1 }, { q: 0, r: 1 },
+  ];
+
+  // The two cells a hyperlane tile's connector curve should point
+  // toward, in priority order:
+  //  - two hyperlane-neighbors: connects through the tile like a real
+  //    mid-chain hyperlane segment.
+  //  - one hyperlane-neighbor: a chain's dead end -- points the other
+  //    end at the reflection straight through the tile, so the lane
+  //    still reads as continuing outward rather than stopping short.
+  //  - no hyperlane-neighbor (an isolated hyperlane tile, not part of
+  //    any chain/cluster): falls back to the tile's ring-tangential
+  //    neighbors -- still real, adjacent cells, just not other
+  //    hyperlane tiles, since there's no chain here to visually follow.
+  function hyperlaneConnectionCells(cell) {
+    const neighbors = HEX_NEIGHBOR_DIRS.map((d) => ({ q: cell.q + d.q, r: cell.r + d.r }));
+    const hyperlaneNeighbors = neighbors.filter((n) => hyperlaneKeys.has(keyFor(n.q, n.r)));
+    if (hyperlaneNeighbors.length >= 2) return hyperlaneNeighbors.slice(0, 2);
+    if (hyperlaneNeighbors.length === 1) {
+      const only = hyperlaneNeighbors[0];
+      const reflected = { q: cell.q - (only.q - cell.q), r: cell.r - (only.r - cell.r) };
+      return [only, reflected];
+    }
     const ringSize = 6 * cell.ring;
     const prevIdx = (cell.indexInRing - 1 + ringSize) % ringSize;
     const nextIdx = (cell.indexInRing + 1) % ringSize;
@@ -420,13 +438,10 @@
     const midpoint = (a, b) => ({ x: (a[0] + b[0]) / 2, y: (a[1] + b[1]) / 2 });
     const edgeMidpoints = corners.map((c, i) => midpoint(c, corners[(i + 1) % 6]));
 
-    // A hyperlane tile visually bridges the gap along its ring, so its
-    // connector curve should point toward its two ring-neighbors (the
-    // tiles it's actually adjacent to and standing in for) rather than
-    // a fixed edge pair -- for each neighbor, pick whichever of the 6
-    // edge midpoints most closely faces that neighbor's real direction.
-    const neighbors = ringNeighborCells(cell);
-    const targets = neighbors.map((n) => {
+    // For each connection target, pick whichever of the 6 edge
+    // midpoints most closely faces that target's real direction.
+    const connections = hyperlaneConnectionCells(cell);
+    const targets = connections.map((n) => {
       const npx = axialToPixel(n.q, n.r);
       const dx = npx.x - x;
       const dy = npx.y - y;
