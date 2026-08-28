@@ -425,6 +425,39 @@
     ];
   }
 
+  // Which of the tile's 6 edges (0-5, matching hexCorner()'s numbering)
+  // most closely faces the direction from (x, y) toward neighbor cell
+  // `n`, using the precomputed `edgeMidpoints` for that tile.
+  function closestEdgeIndex(x, y, edgeMidpoints, n) {
+    const npx = axialToPixel(n.q, n.r);
+    const dx = npx.x - x;
+    const dy = npx.y - y;
+    let bestIdx = 0;
+    let bestDot = -Infinity;
+    edgeMidpoints.forEach((em, i) => {
+      const dot = (em.x - x) * dx + (em.y - y) * dy;
+      if (dot > bestDot) {
+        bestDot = dot;
+        bestIdx = i;
+      }
+    });
+    return bestIdx;
+  }
+
+  // Finds the rotation (0-5) that, applied to `tile`'s own connection
+  // edges, lines them up with the real target edges [edgeA, edgeB] --
+  // tries both possible pairings (a tile's two edges aren't
+  // interchangeable once rotated, so either its first or second edge
+  // could be the one that ends up matching `edgeA`).
+  function rotationForTile(tile, edgeA, edgeB) {
+    const [ca, cb] = tile.connections[0];
+    const rot1 = ((edgeA - ca) % 6 + 6) % 6;
+    if ((cb + rot1) % 6 === edgeB) return rot1;
+    const rot2 = ((edgeB - ca) % 6 + 6) % 6;
+    if ((cb + rot2) % 6 === edgeA) return rot2;
+    return 0;
+  }
+
   function drawHyperlaneSlot(g, x, y, key, cell) {
     const poly = svgEl("polygon", {
       points: hexPolygonPoints(x, y),
@@ -433,35 +466,44 @@
     });
     g.appendChild(poly);
 
-    const lineGroup = svgEl("g", { "pointer-events": "none" });
     const corners = [0, 1, 2, 3, 4, 5].map((i) => hexCorner(x, y, i));
     const midpoint = (a, b) => ({ x: (a[0] + b[0]) / 2, y: (a[1] + b[1]) / 2 });
     const edgeMidpoints = corners.map((c, i) => midpoint(c, corners[(i + 1) % 6]));
 
-    // For each connection target, pick whichever of the 6 edge
-    // midpoints most closely faces that target's real direction.
     const connections = hyperlaneConnectionCells(cell);
-    const targets = connections.map((n) => {
-      const npx = axialToPixel(n.q, n.r);
-      const dx = npx.x - x;
-      const dy = npx.y - y;
-      let bestIdx = 0;
-      let bestDot = -Infinity;
-      edgeMidpoints.forEach((em, i) => {
-        const dot = (em.x - x) * dx + (em.y - y) * dy;
-        if (dot > bestDot) {
-          bestDot = dot;
-          bestIdx = i;
-        }
-      });
-      return edgeMidpoints[bestIdx];
-    });
+    const edgeA = closestEdgeIndex(x, y, edgeMidpoints, connections[0]);
+    const edgeB = closestEdgeIndex(x, y, edgeMidpoints, connections[1]);
 
-    lineGroup.appendChild(svgEl("path", {
-      d: `M ${targets[0].x} ${targets[0].y} Q ${x} ${y} ${targets[1].x} ${targets[1].y}`,
-      class: "hyperlane-line",
-    }));
+    // A real PoK hyperlane tile has 9 numbers (83-91), each a
+    // double-sided physical tile -- every position this app draws
+    // needs exactly one lane (verified against every layout's real
+    // connection data: no hyperlane slot ever needs more than 2
+    // connections), so pick whichever single-lane face's own shape
+    // (straight opposite-edge, or bent two-edges-apart) matches this
+    // position's real edge pair, then rotate it to align. Alternates
+    // between the two real faces of that shape for a bit of variety
+    // across a layout's hyperlane slots, purely cosmetic -- this app
+    // doesn't track which layout position a real printed diagram would
+    // assign a given physical tile to.
+    const edgeOffset = Math.min(Math.abs(edgeA - edgeB), 6 - Math.abs(edgeA - edgeB));
+    const shapePool = edgeOffset === 3 ? HYPERLANE_STRAIGHT_TILES : HYPERLANE_BENT_TILES;
+    const tile = shapePool[(cell.q + cell.r) & 1 ? 1 : 0];
+    const rotation = rotationForTile(tile, edgeA, edgeB);
+
+    const lineGroup = svgEl("g", { "pointer-events": "none" });
+    tile.connections.forEach(([a, b]) => {
+      const p1 = edgeMidpoints[(a + rotation) % 6];
+      const p2 = edgeMidpoints[(b + rotation) % 6];
+      lineGroup.appendChild(svgEl("path", {
+        d: `M ${p1.x} ${p1.y} Q ${x} ${y} ${p2.x} ${p2.y}`,
+        class: "hyperlane-line",
+      }));
+    });
     g.appendChild(lineGroup);
+
+    const label = svgEl("text", { x, y: y - 40, class: "hex-label hex-id-label" });
+    label.textContent = `#${tile.id}`;
+    g.appendChild(label);
   }
 
   function drawEmpty(g, x, y, key) {
